@@ -10,9 +10,9 @@ RUN npm run build
 FROM composer:2 AS vendor
 WORKDIR /app
 COPY composer.json composer.lock ./
-RUN composer install --no-dev --no-scripts --no-interaction --prefer-dist --no-autoloader
+RUN composer install --no-scripts --no-interaction --prefer-dist --no-autoloader
 COPY . .
-RUN composer dump-autoload --optimize --no-dev --no-interaction
+RUN composer dump-autoload --optimize --no-interaction
 
 # --- Runtime ------------------------------------------------------------------------
 FROM php:8.4-apache
