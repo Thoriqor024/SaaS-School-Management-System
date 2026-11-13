@@ -82,6 +82,7 @@ class TransportRouteController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $this->validated($request);
+        $this->ensureRecordScope($request, $data['school_id'], $data['branch_id'] ?? null);
         $stops = $data['stops'] ?? [];
         unset($data['stops']);
 
@@ -115,6 +116,7 @@ class TransportRouteController extends Controller
         abort_unless($this->canSee($request, $route), 403);
 
         $data = $this->validated($request, $route);
+        $this->ensureRecordScope($request, $data['school_id'], $data['branch_id'] ?? null);
         $stops = $data['stops'] ?? [];
         unset($data['stops']);
 
@@ -142,7 +144,7 @@ class TransportRouteController extends Controller
     {
         $user = $request->user();
 
-        return $user->isSuperAdmin() || ! $user->school_id || $route->school_id === $user->school_id;
+        return $user->isSuperAdmin() || ($user->school_id !== null && $route->school_id === $user->school_id);
     }
 
     protected function formOptions(Request $request): array

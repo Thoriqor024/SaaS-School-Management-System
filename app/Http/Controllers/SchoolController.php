@@ -50,6 +50,8 @@ class SchoolController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        abort_unless($request->user()->isSuperAdmin(), 403, 'Only super admins can create schools.');
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
             'code' => ['required', 'string', 'max:32', 'unique:schools,code'],
@@ -65,6 +67,7 @@ class SchoolController extends Controller
         ]);
 
         $data['logo_color'] = collect(['indigo', 'sky', 'emerald', 'amber', 'rose', 'violet'])->random();
+        $data['is_active'] = $data['is_active'] ?? true;
         School::create($data);
 
         return back()->with('success', 'School was created.');
@@ -86,6 +89,8 @@ class SchoolController extends Controller
             'is_active' => ['boolean'],
         ]);
 
+        $this->ensureRecordScope($request, $school->id);
+
         $school->update($data);
 
         return back()->with('success', $school->name.' was updated.');
@@ -93,6 +98,8 @@ class SchoolController extends Controller
 
     public function destroy(Request $request, School $school): RedirectResponse
     {
+        $this->ensureRecordScope($request, $school->id);
+
         if ($school->students()->exists()) {
             return back()->with('error', 'Move or remove the school\'s students before deleting it.');
         }
@@ -117,7 +124,9 @@ class SchoolController extends Controller
             'is_active' => ['boolean'],
         ]);
 
-        $school->branches()->create($data);
+        $this->ensureRecordScope($request, $school->id);
+
+        $school->branches()->create([...$data, 'is_active' => $data['is_active'] ?? true]);
 
         return back()->with('success', 'Branch was added to '.$school->name.'.');
     }
@@ -137,13 +146,17 @@ class SchoolController extends Controller
             'is_active' => ['boolean'],
         ]);
 
+        $this->ensureRecordScope($request, $branch->school_id);
+
         $branch->update($data);
 
         return back()->with('success', $branch->name.' was updated.');
     }
 
-    public function destroyBranch(Branch $branch): RedirectResponse
+    public function destroyBranch(Request $request, Branch $branch): RedirectResponse
     {
+        $this->ensureRecordScope($request, $branch->school_id);
+
         if ($branch->students()->exists()) {
             return back()->with('error', 'This branch still has students assigned to it.');
         }

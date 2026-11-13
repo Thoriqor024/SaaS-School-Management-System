@@ -85,6 +85,8 @@ class LibraryController extends Controller
             'notes' => ['nullable', 'string', 'max:500'],
         ]);
 
+        $this->ensureRecordScope($request, $data['school_id'], $data['branch_id'] ?? null);
+
         $personId = $data['member_type'] === 'student' ? ($data['student_id'] ?? null) : ($data['employee_id'] ?? null);
 
         if (! $personId) {
@@ -115,6 +117,8 @@ class LibraryController extends Controller
             'status' => ['required', Rule::in(['active', 'suspended', 'expired'])],
             'notes' => ['nullable', 'string', 'max:500'],
         ]);
+
+        $this->ensureRecordScope($request, $member->school_id);
 
         $member->update($data);
 
@@ -207,6 +211,12 @@ class LibraryController extends Controller
 
         $book = Book::findOrFail($data['book_id']);
         $member = LibraryMember::with('activeLoans')->findOrFail($data['library_member_id']);
+
+        $this->ensureRecordScope($request, $book->school_id);
+
+        if ($member->school_id !== $book->school_id) {
+            return back()->with('error', 'This membership belongs to a different school than the book.');
+        }
 
         if ($member->status !== 'active') {
             return back()->with('error', 'This membership is not active.');

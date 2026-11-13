@@ -73,6 +73,8 @@ class TransportVehicleController extends Controller
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);
 
+        $this->ensureRecordScope($request, $data['school_id'], $data['branch_id'] ?? null);
+
         TransportVehicle::create($data);
 
         return back()->with('success', 'Vehicle '.$data['plate_number'].' was added to the fleet.');
@@ -97,6 +99,8 @@ class TransportVehicleController extends Controller
             'insurance_expiry' => ['nullable', 'date'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);
+
+        $this->ensureRecordScope($request, $data['school_id'], $data['branch_id'] ?? null);
 
         $vehicle->update($data);
 

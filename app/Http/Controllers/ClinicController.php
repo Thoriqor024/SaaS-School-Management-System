@@ -81,6 +81,7 @@ class ClinicController extends Controller
     public function storeVisit(Request $request): RedirectResponse
     {
         $data = $this->validateVisit($request);
+        $this->ensureRecordScope($request, $data['school_id'], $data['branch_id'] ?? null);
         ClinicVisit::create($data);
 
         return redirect()->route('clinic.visits.index')->with('success', 'Clinic visit was recorded.');
@@ -117,7 +118,9 @@ class ClinicController extends Controller
     {
         abort_unless($this->canSee($request, $visit), 403);
 
-        $visit->update($this->validateVisit($request));
+        $data = $this->validateVisit($request);
+        $this->ensureRecordScope($request, $data['school_id'], $data['branch_id'] ?? null);
+        $visit->update($data);
 
         return redirect()->route('clinic.visits.index')->with('success', 'Clinic visit was updated.');
     }
@@ -147,6 +150,7 @@ class ClinicController extends Controller
         ]);
 
         $medicine = Medicine::findOrFail($data['medicine_id']);
+        $this->ensureRecordScope($request, $medicine->school_id);
 
         if ($medicine->stock < $data['quantity']) {
             return back()->with('error', 'Not enough stock of '.$medicine->name.' available.');
@@ -217,6 +221,8 @@ class ClinicController extends Controller
             'notes' => ['nullable', 'string', 'max:500'],
         ]);
 
+        $this->ensureRecordScope($request, $data['school_id'], $data['branch_id'] ?? null);
+
         Medicine::create($data);
 
         return back()->with('success', $data['name'].' was added to the clinic inventory.');
@@ -236,6 +242,8 @@ class ClinicController extends Controller
             'batch_number' => ['nullable', 'string', 'max:48'],
             'notes' => ['nullable', 'string', 'max:500'],
         ]);
+
+        $this->ensureRecordScope($request, $data['school_id'], $data['branch_id'] ?? null);
 
         $medicine->update($data);
 
@@ -324,6 +332,8 @@ class ClinicController extends Controller
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);
 
+        $this->ensureRecordScope($request, $data['school_id'], $data['branch_id'] ?? null);
+
         $personId = $data['patient_type'] === 'student' ? ($data['student_id'] ?? null) : ($data['employee_id'] ?? null);
 
         if (! $personId) {
@@ -359,6 +369,8 @@ class ClinicController extends Controller
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);
 
+        $this->ensureRecordScope($request, $record->school_id);
+
         $record->update($data);
 
         return back()->with('success', 'Medical record was updated.');
@@ -377,7 +389,7 @@ class ClinicController extends Controller
     {
         $user = $request->user();
 
-        return $user->isSuperAdmin() || ! $user->school_id || $visit->school_id === $user->school_id;
+        return $user->isSuperAdmin() || ($user->school_id !== null && $visit->school_id === $user->school_id);
     }
 
     protected function visitOptions(Request $request): array

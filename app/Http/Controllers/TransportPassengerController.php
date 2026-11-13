@@ -70,6 +70,9 @@ class TransportPassengerController extends Controller
             'notes' => ['nullable', 'string', 'max:500'],
         ]);
 
+        $route = TransportRoute::findOrFail($data['transport_route_id']);
+        $this->ensureRecordScope($request, $route->school_id);
+
         if (TransportPassenger::where('student_id', $data['student_id'])->where('transport_route_id', $data['transport_route_id'])->exists()) {
             return back()->with('error', 'This student is already assigned to that route.');
         }
@@ -87,6 +90,8 @@ class TransportPassengerController extends Controller
             'is_active' => ['boolean'],
             'notes' => ['nullable', 'string', 'max:500'],
         ]);
+
+        $this->ensureRecordScope($request, $passenger->route?->school_id);
 
         $passenger->update($data);
 
@@ -161,6 +166,7 @@ class TransportPassengerController extends Controller
         ]);
 
         $route = TransportRoute::findOrFail($data['transport_route_id']);
+        $this->ensureRecordScope($request, $route->school_id);
 
         PassengerLog::create([
             ...$data,

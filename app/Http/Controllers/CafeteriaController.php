@@ -55,6 +55,7 @@ class CafeteriaController extends Controller
     public function storeMenu(Request $request): RedirectResponse
     {
         $data = $this->validateMenu($request);
+        $this->ensureRecordScope($request, $data['school_id'], $data['branch_id'] ?? null);
         $items = $data['items'] ?? [];
         unset($data['items']);
 
@@ -71,6 +72,7 @@ class CafeteriaController extends Controller
     public function updateMenu(Request $request, CafeteriaMenu $menu): RedirectResponse
     {
         $data = $this->validateMenu($request);
+        $this->ensureRecordScope($request, $data['school_id'], $data['branch_id'] ?? null);
         $items = $data['items'] ?? [];
         unset($data['items']);
 
@@ -133,14 +135,18 @@ class CafeteriaController extends Controller
 
     public function storeInventory(Request $request): RedirectResponse
     {
-        CafeteriaInventoryItem::create($this->validateInventory($request));
+        $data = $this->validateInventory($request);
+        $this->ensureRecordScope($request, $data['school_id'], $data['branch_id'] ?? null);
+        CafeteriaInventoryItem::create($data);
 
         return back()->with('success', 'Inventory item was added.');
     }
 
     public function updateInventory(Request $request, CafeteriaInventoryItem $item): RedirectResponse
     {
-        $item->update($this->validateInventory($request));
+        $data = $this->validateInventory($request);
+        $this->ensureRecordScope($request, $data['school_id'], $data['branch_id'] ?? null);
+        $item->update($data);
 
         return back()->with('success', $item->name.' was updated.');
     }
@@ -238,6 +244,8 @@ class CafeteriaController extends Controller
             'notes' => ['nullable', 'string', 'max:500'],
         ]);
 
+        $this->ensureRecordScope($request, $data['school_id'], $data['branch_id'] ?? null);
+
         MealLog::create([...$data, 'guests_served' => $data['guests_served'] ?? 0, 'recorded_by' => $request->user()->id]);
 
         return back()->with('success', 'Daily meal log was recorded.');
@@ -254,6 +262,8 @@ class CafeteriaController extends Controller
             'guests_served' => ['nullable', 'integer', 'min:0', 'max:100000'],
             'notes' => ['nullable', 'string', 'max:500'],
         ]);
+
+        $this->ensureRecordScope($request, $log->school_id);
 
         $log->update([...$data, 'guests_served' => $data['guests_served'] ?? 0]);
 

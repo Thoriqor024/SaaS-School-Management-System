@@ -2,16 +2,20 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\HandlesPhotos;
 use App\Models\Employee;
+use App\Support\EmployeeRules;
+use App\Support\Media;
 use App\Support\OptionLists;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class EmployeeController extends Controller
 {
+    use HandlesPhotos;
+
     public function index(Request $request): Response
     {
         $user = $request->user();
@@ -62,7 +66,11 @@ class EmployeeController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $employee = Employee::create($this->validated($request));
+        $data = $this->validated($request);
+        $this->ensureRecordScope($request, $data['school_id'], $data['branch_id'] ?? null);
+        $photo = $this->resolvePhoto($request, null, 'photos/employees');
+        unset($data['photo'], $data['remove_photo']);
+        $employee = Employee::create([...$data, 'photo_path' => $photo]);
 
         return redirect()->route('employees.show', $employee)->with('success', $employee->full_name.' was added to the employee database.');
     }
@@ -98,6 +106,7 @@ class EmployeeController extends Controller
                 'branch' => $employee->branch,
                 'medical_record' => $employee->medicalRecord,
                 'login_account' => $employee->user?->only('id', 'name', 'email'),
+                'photo_url' => Media::photoUrl($employee->photo_path),
             ],
             'visits' => $visits,
             'routes' => $routes,
@@ -118,7 +127,11 @@ class EmployeeController extends Controller
     {
         abort_unless($this->canSee($request, $employee), 403);
 
-        $employee->update($this->validated($request, $employee));
+        $data = $this->validated($request, $employee);
+        $this->ensureRecordScope($request, $data['school_id'], $data['branch_id'] ?? null);
+        $data['photo_path'] = $this->resolvePhoto($request, $employee->photo_path, 'photos/employees');
+        unset($data['photo'], $data['remove_photo']);
+        $employee->update($data);
 
         return redirect()->route('employees.show', $employee)->with('success', $employee->full_name.' was updated.');
     }
@@ -154,31 +167,6 @@ class EmployeeController extends Controller
 
     protected function validated(Request $request, ?Employee $employee = null): array
     {
-        return $request->validate([
-            'school_id' => ['required', 'uuid', 'exists:schools,id'],
-            'branch_id' => ['nullable', 'uuid', 'exists:branches,id'],
-            'employee_number' => ['required', 'string', 'max:48', Rule::unique('employees', 'employee_number')->ignore($employee?->id)],
-            'full_name' => ['required', 'string', 'max:120'],
-            'nickname' => ['nullable', 'string', 'max:60'],
-            'gender' => ['required', Rule::in(['male', 'female'])],
-            'birth_place' => ['nullable', 'string', 'max:80'],
-            'birth_date' => ['nullable', 'date', 'before:today'],
-            'religion' => ['nullable', 'string', 'max:32'],
-            'marital_status' => ['nullable', 'string', 'max:24'],
-            'blood_type' => ['nullable', 'string', 'max:8'],
-            'type' => ['required', Rule::in(['teacher', 'staff', 'general'])],
-            'position' => ['nullable', 'string', 'max:80'],
-            'department' => ['nullable', 'string', 'max:80'],
-            'employment_status' => ['required', Rule::in(['permanent', 'contract', 'part_time', 'intern'])],
-            'join_date' => ['nullable', 'date'],
-            'end_date' => ['nullable', 'date', 'after_or_equal:join_date'],
-            'education_level' => ['nullable', 'string', 'max:32'],
-            'major' => ['nullable', 'string', 'max:80'],
-            'email' => ['nullable', 'email', 'max:120'],
-            'phone' => ['nullable', 'string', 'max:32'],
-            'address' => ['nullable', 'string', 'max:500'],
-            'notes' => ['nullable', 'string', 'max:1000'],
-            'is_active' => ['boolean'],
-        ]);
+        return $request->validate(EmployeeRules::rules($employee));
     }
 }

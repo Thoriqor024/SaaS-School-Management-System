@@ -64,6 +64,7 @@ class BookController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $this->validated($request);
+        $this->ensureRecordScope($request, $data['school_id'], $data['branch_id'] ?? null);
         Book::create($data);
 
         return redirect()->route('library.books.index')->with('success', 'Book "'.$data['title'].'" was added to the catalog.');
@@ -85,7 +86,9 @@ class BookController extends Controller
     {
         abort_unless($this->canSee($request, $book), 403);
 
-        $book->update($this->validated($request, $book));
+        $data = $this->validated($request, $book);
+        $this->ensureRecordScope($request, $data['school_id'], $data['branch_id'] ?? null);
+        $book->update($data);
 
         return redirect()->route('library.books.index')->with('success', 'Book was updated.');
     }
@@ -155,7 +158,7 @@ class BookController extends Controller
     {
         $user = $request->user();
 
-        return $user->isSuperAdmin() || ! $user->school_id || $book->school_id === $user->school_id;
+        return $user->isSuperAdmin() || ($user->school_id !== null && $book->school_id === $user->school_id);
     }
 
     protected function validated(Request $request, ?Book $book = null): array
@@ -178,7 +181,7 @@ class BookController extends Controller
         ]);
 
         $data['available_copies'] = min($data['available_copies'], $data['total_copies']);
-        $data['barcode'] = $data['barcode'] ?: 'BK-'.strtoupper(Str::random(8));
+        $data['barcode'] = ($data['barcode'] ?? null) ?: 'BK-'.strtoupper(Str::random(8));
 
         return $data;
     }

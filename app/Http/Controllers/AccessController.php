@@ -75,6 +75,8 @@ class AccessController extends Controller
             'roles.*' => ['uuid', 'exists:roles,id'],
         ]);
 
+        $this->ensureRecordScope($request, $data['school_id'] ?? null, $data['branch_id'] ?? null);
+
         $user = User::create([
             'name' => $data['name'],
             'email' => $data['email'],
@@ -108,6 +110,8 @@ class AccessController extends Controller
             'roles' => ['required', 'array', 'min:1'],
             'roles.*' => ['uuid', 'exists:roles,id'],
         ]);
+
+        $this->ensureRecordScope($request, $data['school_id'] ?? null, $data['branch_id'] ?? null);
 
         $payload = collect($data)->except(['password', 'roles'])->toArray();
 
@@ -173,6 +177,7 @@ class AccessController extends Controller
     public function updateRolePermissions(Request $request, Role $role): RedirectResponse
     {
         abort_if($role->slug === 'super_admin', 403, 'Super admin permissions are locked.');
+        abort_unless($request->user()->isSuperAdmin(), 403, 'Only super admins can change role permissions.');
 
         $data = $request->validate([
             'permissions' => ['array'],

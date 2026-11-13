@@ -2,16 +2,20 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\HandlesPhotos;
 use App\Models\Student;
+use App\Support\Media;
 use App\Support\OptionLists;
+use App\Support\StudentRules;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
 
 class StudentController extends Controller
 {
+    use HandlesPhotos;
+
     public function index(Request $request): Response
     {
         $user = $request->user();
@@ -80,7 +84,10 @@ class StudentController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $this->validated($request);
-        $student = Student::create($data);
+        $this->ensureRecordScope($request, $data['school_id'], $data['branch_id'] ?? null);
+        $photo = $this->resolvePhoto($request, null, 'photos/students');
+        unset($data['photo'], $data['remove_photo']);
+        $student = Student::create([...$data, 'photo_path' => $photo]);
 
         return redirect()->route('students.show', $student)->with('success', $student->full_name.' was added to the global student database.');
     }
@@ -127,6 +134,7 @@ class StudentController extends Controller
                 'branch' => $student->branch,
                 'medical_record' => $student->medicalRecord,
                 'route' => $student->activeRoute?->route?->only(['id', 'name', 'code']),
+                'photo_url' => Media::photoUrl($student->photo_path),
             ],
             'visits' => $visits,
             'loans' => $loans,
@@ -147,7 +155,11 @@ class StudentController extends Controller
     {
         abort_unless($this->canSee($request, $student), 403);
 
-        $student->update($this->validated($request, $student));
+        $data = $this->validated($request, $student);
+        $this->ensureRecordScope($request, $data['school_id'], $data['branch_id'] ?? null);
+        $data['photo_path'] = $this->resolvePhoto($request, $student->photo_path, 'photos/students');
+        unset($data['photo'], $data['remove_photo']);
+        $student->update($data);
 
         return redirect()->route('students.show', $student)->with('success', $student->full_name.' was updated.');
     }
@@ -166,7 +178,7 @@ class StudentController extends Controller
     {
         $user = $request->user();
 
-        return $user->isSuperAdmin() || ! $user->school_id || $student->school_id === $user->school_id;
+        return $user->isSuperAdmin() || ($user->school_id !== null && $student->school_id === $user->school_id);
     }
 
     protected function gradeLevels(): array
@@ -188,32 +200,6 @@ class StudentController extends Controller
 
     protected function validated(Request $request, ?Student $student = null): array
     {
-        return $request->validate([
-            'school_id' => ['required', 'uuid', 'exists:schools,id'],
-            'branch_id' => ['nullable', 'uuid', 'exists:branches,id'],
-            'nisn' => ['nullable', 'string', 'max:32', Rule::unique('students', 'nisn')->ignore($student?->id)],
-            'nis' => ['nullable', 'string', 'max:32'],
-            'full_name' => ['required', 'string', 'max:120'],
-            'nickname' => ['nullable', 'string', 'max:60'],
-            'gender' => ['required', Rule::in(['male', 'female'])],
-            'birth_place' => ['nullable', 'string', 'max:80'],
-            'birth_date' => ['nullable', 'date', 'before:today'],
-            'religion' => ['nullable', 'string', 'max:32'],
-            'blood_type' => ['nullable', 'string', 'max:8'],
-            'grade_level' => ['nullable', 'string', 'max:16'],
-            'classroom' => ['nullable', 'string', 'max:32'],
-            'enrollment_year' => ['nullable', 'string', 'max:8'],
-            'admission_date' => ['nullable', 'date'],
-            'status' => ['required', Rule::in(['active', 'inactive', 'graduated', 'transferred'])],
-            'email' => ['nullable', 'email', 'max:120'],
-            'phone' => ['nullable', 'string', 'max:32'],
-            'address' => ['nullable', 'string', 'max:500'],
-            'guardian_name' => ['nullable', 'string', 'max:120'],
-            'guardian_relation' => ['nullable', 'string', 'max:24'],
-            'guardian_phone' => ['nullable', 'string', 'max:32'],
-            'guardian_email' => ['nullable', 'email', 'max:120'],
-            'guardian_occupation' => ['nullable', 'string', 'max:80'],
-            'notes' => ['nullable', 'string', 'max:1000'],
-        ]);
+        return $request->validate(StudentRules::rules($student));
     }
 }

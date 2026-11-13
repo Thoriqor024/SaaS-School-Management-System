@@ -25,10 +25,15 @@ trait BelongsToSchool
      */
     public function scopeVisibleTo($query, ?User $user)
     {
-        if ($user && ! $user->isSuperAdmin() && $user->school_id) {
-            $query->where($this->getTable().'.school_id', $user->school_id);
+        if (! $user || $user->isSuperAdmin()) {
+            return $query;
         }
 
-        return $query;
+        // A non-super-admin account must belong to a school; without one it sees nothing.
+        if (! $user->school_id) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->where($this->getTable().'.school_id', $user->school_id);
     }
 }

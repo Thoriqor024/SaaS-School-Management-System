@@ -74,7 +74,9 @@ class AssetController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $asset = Asset::create($this->validated($request));
+        $data = $this->validated($request);
+        $this->ensureRecordScope($request, $data['school_id'], $data['branch_id'] ?? null);
+        $asset = Asset::create($data);
 
         return redirect()->route('assets.index')->with('success', $asset->name.' was added to the inventory.');
     }
@@ -93,7 +95,9 @@ class AssetController extends Controller
     {
         abort_unless($this->canSee($request, $asset), 403);
 
-        $asset->update($this->validated($request, $asset));
+        $data = $this->validated($request, $asset);
+        $this->ensureRecordScope($request, $data['school_id'], $data['branch_id'] ?? null);
+        $asset->update($data);
 
         return redirect()->route('assets.index')->with('success', $asset->name.' was updated.');
     }
