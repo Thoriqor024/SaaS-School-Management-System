@@ -37,9 +37,17 @@ export default function StudentShow({ student, visits, loans }) {
             <div className="grid gap-4 lg:grid-cols-3">
                 <Card className="lg:col-span-2">
                     <div className="flex flex-col gap-4 p-5 sm:flex-row sm:items-center">
-                        <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 text-xl font-bold text-white">
-                            {student.full_name?.slice(0, 2).toUpperCase()}
-                        </span>
+                        {student.photo_url ? (
+                            <img
+                                src={student.photo_url}
+                                alt={student.full_name}
+                                className="h-16 w-16 rounded-2xl object-cover ring-1 ring-slate-200"
+                            />
+                        ) : (
+                            <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-brand-500 to-brand-700 text-xl font-bold text-white">
+                                {student.full_name?.slice(0, 2).toUpperCase()}
+                            </span>
+                        )}
                         <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2">
                                 <h2 className="text-lg font-bold text-slate-900">{student.full_name}</h2>

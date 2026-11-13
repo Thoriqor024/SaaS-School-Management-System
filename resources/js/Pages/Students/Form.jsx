@@ -1,15 +1,16 @@
 import { Link, useForm } from '@inertiajs/react';
 import { ArrowLeft, Loader2, Save } from 'lucide-react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import AppLayout from '../../Layouts/AppLayout';
-import { Card, CardHeader, Field, Input, PageHeader, Select, Textarea } from '../../Components/ui';
+import { Card, CardHeader, Field, Input, PageHeader, PhotoField, Select, Textarea } from '../../Components/ui';
 
 const toDate = (value) => (value ? String(value).slice(0, 10) : '');
 
 export default function StudentForm({ student, schools, branches, gradeLevels, statuses }) {
     const isEdit = Boolean(student);
+    const [preview, setPreview] = useState(student?.photo_url ?? null);
 
-    const { data, setData, post, put, processing, errors } = useForm({
+    const { data, setData, post, put, processing, errors, progress } = useForm({
         school_id: student?.school_id ?? schools[0]?.id ?? '',
         branch_id: student?.branch_id ?? '',
         nisn: student?.nisn ?? '',
@@ -35,6 +36,8 @@ export default function StudentForm({ student, schools, branches, gradeLevels, s
         guardian_email: student?.guardian_email ?? '',
         guardian_occupation: student?.guardian_occupation ?? '',
         notes: student?.notes ?? '',
+        photo: null,
+        remove_photo: false,
     });
 
     const visibleBranches = useMemo(
@@ -184,6 +187,26 @@ export default function StudentForm({ student, schools, branches, gradeLevels, s
                             <Input value={data.guardian_occupation} onChange={(e) => setData('guardian_occupation', e.target.value)} />
                         </Field>
                     </div>
+                </Card>
+
+                <Card>
+                    <CardHeader title="Photo" description="JPG, PNG or WebP up to 2 MB. Used on the profile and printed lists." />
+                    <PhotoField
+                        preview={preview}
+                        initials={data.full_name ? data.full_name.slice(0, 2).toUpperCase() : 'ST'}
+                        currentUrl={student?.photo_url}
+                        error={errors.photo}
+                        progress={progress}
+                        removePhoto={data.remove_photo}
+                        onFile={(file) => {
+                            setData((values) => ({ ...values, photo: file, remove_photo: false }));
+                            if (file) setPreview(URL.createObjectURL(file));
+                        }}
+                        onToggleRemove={(checked) => {
+                            setData('remove_photo', checked);
+                            if (checked) setPreview(null);
+                        }}
+                    />
                 </Card>
 
                 <Card>

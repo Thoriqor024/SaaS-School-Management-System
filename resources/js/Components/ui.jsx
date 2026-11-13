@@ -312,6 +312,46 @@ export function Checkbox({ label, description, className = '', ...props }) {
     );
 }
 
+export function PhotoField({ preview, initials = 'ST', currentUrl, error, progress, removePhoto, onFile, onToggleRemove }) {
+    return (
+        <div className="flex flex-col gap-4 p-4 sm:flex-row sm:items-center sm:p-5">
+            {preview ? (
+                <img src={preview} alt="Photo preview" className="h-20 w-20 rounded-2xl object-cover ring-1 ring-slate-200" />
+            ) : (
+                <span className="flex h-20 w-20 items-center justify-center rounded-2xl bg-slate-100 text-lg font-bold text-slate-400">
+                    {initials}
+                </span>
+            )}
+            <div className="space-y-2">
+                <input
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp"
+                    onChange={(event) => onFile(event.target.files?.[0] ?? null)}
+                    className="block text-xs text-slate-600 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-xs file:font-medium file:text-slate-700 hover:file:bg-slate-200"
+                />
+                <p className="text-[11px] text-slate-500">Square photos look best. Leave empty to keep the current picture.</p>
+                {progress && (
+                    <div className="h-1 w-40 overflow-hidden rounded-full bg-slate-100">
+                        <div className="h-full bg-brand-500" style={{ width: `${progress.percentage}%` }} />
+                    </div>
+                )}
+                {currentUrl && (
+                    <label className="flex items-center gap-2 text-[11px] text-slate-600">
+                        <input
+                            type="checkbox"
+                            checked={removePhoto}
+                            onChange={(event) => onToggleRemove(event.target.checked)}
+                            className="h-3.5 w-3.5 rounded border-slate-300"
+                        />
+                        Remove current photo
+                    </label>
+                )}
+                {error && <p className="text-[11px] text-rose-600">{error}</p>}
+            </div>
+        </div>
+    );
+}
+
 export function SearchInput({ value, onChange, placeholder = 'Search…', className = '' }) {
     return (
         <div className={cx('relative', className)}>

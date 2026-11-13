@@ -1,16 +1,17 @@
 import { Link, useForm } from '@inertiajs/react';
 import { ArrowLeft, Loader2, Save } from 'lucide-react';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import AppLayout from '../../Layouts/AppLayout';
-import { Card, CardHeader, Checkbox, Field, Input, PageHeader, Select, Textarea } from '../../Components/ui';
+import { Card, CardHeader, Checkbox, Field, Input, PageHeader, PhotoField, Select, Textarea } from '../../Components/ui';
 import { titleCase } from '../../lib/format';
 
 const toDate = (value) => (value ? String(value).slice(0, 10) : '');
 
 export default function EmployeeForm({ employee, schools, branches, types, employmentStatuses }) {
     const isEdit = Boolean(employee);
+    const [preview, setPreview] = useState(employee?.photo_url ?? null);
 
-    const { data, setData, post, put, processing, errors } = useForm({
+    const { data, setData, post, put, processing, errors, progress } = useForm({
         school_id: employee?.school_id ?? schools[0]?.id ?? '',
         branch_id: employee?.branch_id ?? '',
         employee_number: employee?.employee_number ?? `EMP-${String(Date.now()).slice(-4)}`,
@@ -35,6 +36,8 @@ export default function EmployeeForm({ employee, schools, branches, types, emplo
         address: employee?.address ?? '',
         notes: employee?.notes ?? '',
         is_active: employee?.is_active ?? true,
+        photo: null,
+        remove_photo: false,
     });
 
     const visibleBranches = useMemo(() => branches.filter((branch) => branch.school_id === data.school_id), [branches, data.school_id]);
@@ -177,6 +180,26 @@ export default function EmployeeForm({ employee, schools, branches, types, emplo
                             />
                         </div>
                     </div>
+                </Card>
+
+                <Card>
+                    <CardHeader title="Photo" description="JPG, PNG or WebP up to 2 MB. Used on the profile and staff directory." />
+                    <PhotoField
+                        preview={preview}
+                        initials={data.full_name ? data.full_name.slice(0, 2).toUpperCase() : 'EM'}
+                        currentUrl={employee?.photo_url}
+                        error={errors.photo}
+                        progress={progress}
+                        removePhoto={data.remove_photo}
+                        onFile={(file) => {
+                            setData((values) => ({ ...values, photo: file, remove_photo: false }));
+                            if (file) setPreview(URL.createObjectURL(file));
+                        }}
+                        onToggleRemove={(checked) => {
+                            setData('remove_photo', checked);
+                            if (checked) setPreview(null);
+                        }}
+                    />
                 </Card>
 
                 <div className="flex items-center justify-end gap-2">
