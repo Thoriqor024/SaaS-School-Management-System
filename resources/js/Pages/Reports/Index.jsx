@@ -1,5 +1,5 @@
 import { router } from '@inertiajs/react';
-import { BarChart3, BookOpen, Boxes, Bus, GraduationCap, HeartPulse, Printer, UsersRound, UtensilsCrossed } from 'lucide-react';
+import { BarChart3, BookOpen, Boxes, Bus, FileDown, FileText, GraduationCap, HeartPulse, Printer, UsersRound, UtensilsCrossed } from 'lucide-react';
 import AppLayout from '../../Layouts/AppLayout';
 import { Bar, Card, CardHeader, PageHeader, Select } from '../../Components/ui';
 import { formatDate, formatDateTime, formatNumber } from '../../lib/format';
@@ -40,6 +40,12 @@ export default function Reports({
                         <option key={school.id} value={school.id}>{school.name}</option>
                     ))}
                 </Select>
+                <a href={`/reports/export?format=csv${filters.school_id ? `&school_id=${filters.school_id}` : ''}`} className="btn-secondary no-print">
+                    <FileDown className="h-4 w-4" /> CSV
+                </a>
+                <a href={`/reports/export?format=pdf${filters.school_id ? `&school_id=${filters.school_id}` : ''}`} className="btn-secondary no-print">
+                    <FileText className="h-4 w-4" /> PDF
+                </a>
                 <button type="button" onClick={() => window.print()} className="btn-secondary no-print">
                     <Printer className="h-4 w-4" /> Print
                 </button>
