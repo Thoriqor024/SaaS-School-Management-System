@@ -9,8 +9,10 @@ use App\Http\Controllers\ClinicController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\IntegrationController;
+use App\Http\Controllers\LabelController;
 use App\Http\Controllers\LibraryController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\ReportExportController;
 use App\Http\Controllers\SchoolController;
 use App\Http\Controllers\StudentController;
 use App\Http\Controllers\TransportPassengerController;
@@ -64,6 +66,7 @@ Route::middleware('auth')->group(function () {
 
     // Assets
     Route::get('/assets', [AssetController::class, 'index'])->name('assets.index')->middleware('permission:assets.view');
+    Route::get('/assets/{asset}/label', [LabelController::class, 'asset'])->name('assets.label')->middleware('permission:assets.view')->whereUuid('asset');
     Route::get('/assets/categories', [AssetController::class, 'categories'])->name('assets.categories')->middleware('permission:assets.view');
     Route::post('/assets/categories', [AssetController::class, 'storeCategory'])->name('assets.categories.store')->middleware('permission:assets.manage');
     Route::put('/assets/categories/{category}', [AssetController::class, 'updateCategory'])->name('assets.categories.update')->middleware('permission:assets.manage');
@@ -97,7 +100,9 @@ Route::middleware('auth')->group(function () {
     Route::delete('/transport/logs/{log}', [TransportPassengerController::class, 'destroyLog'])->name('transport.logs.destroy')->middleware('permission:transport.manage');
 
     // Library
+    Route::get('/library/scan', [LabelController::class, 'scan'])->name('library.scan')->middleware('permission:library.view');
     Route::get('/library/books', [BookController::class, 'index'])->name('library.books.index')->middleware('permission:library.view');
+    Route::get('/library/books/{book}/label', [LabelController::class, 'book'])->name('library.books.label')->middleware('permission:library.view');
     Route::get('/library/books/create', [BookController::class, 'create'])->name('library.books.create')->middleware('permission:library.manage');
     Route::post('/library/books', [BookController::class, 'store'])->name('library.books.store')->middleware('permission:library.manage');
     Route::get('/library/books/{book}/edit', [BookController::class, 'edit'])->name('library.books.edit')->middleware('permission:library.manage');
@@ -157,5 +162,6 @@ Route::middleware('auth')->group(function () {
 
     // Reports & integration
     Route::get('/reports', ReportController::class)->name('reports.index')->middleware('permission:reports.view');
+    Route::get('/reports/export', ReportExportController::class)->name('reports.export')->middleware('permission:reports.view');
     Route::get('/settings/integration', IntegrationController::class)->name('settings.integration')->middleware('permission:integrations.view');
 });

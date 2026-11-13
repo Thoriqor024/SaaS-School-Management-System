@@ -1,5 +1,5 @@
 import { Link, router } from '@inertiajs/react';
-import { Boxes, PackageSearch, Pencil, Plus, Tags, Trash2, Wrench } from 'lucide-react';
+import { Boxes, PackageSearch, Pencil, Plus, QrCode, ScanLine, Tags, Trash2, Wrench } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import AppLayout from '../../Layouts/AppLayout';
 import {
@@ -77,22 +77,28 @@ export default function AssetsIndex({ assets, categories, schools, filters, cond
             label: 'Actions',
             className: 'text-right',
             headerClassName: 'text-right',
-            render: (asset) =>
-                can('assets.manage') ? (
-                    <div className="flex items-center justify-end gap-1">
-                        <Link href={`/assets/${asset.id}/edit`} className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-brand-700" title="Edit">
-                            <Pencil className="h-4 w-4" />
-                        </Link>
-                        <button
-                            type="button"
-                            onClick={() => confirmDelete(`/assets/${asset.id}`, `Delete ${asset.name}?`)}
-                            className="rounded-lg p-1.5 text-slate-500 hover:bg-rose-50 hover:text-rose-600"
-                            title="Delete"
-                        >
-                            <Trash2 className="h-4 w-4" />
-                        </button>
-                    </div>
-                ) : null,
+            render: (asset) => (
+                <div className="flex items-center justify-end gap-1">
+                    <Link href={`/assets/${asset.id}/label`} className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-amber-700" title="Print barcode / QR label">
+                        <QrCode className="h-4 w-4" />
+                    </Link>
+                    {can('assets.manage') && (
+                        <>
+                            <Link href={`/assets/${asset.id}/edit`} className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-brand-700" title="Edit">
+                                <Pencil className="h-4 w-4" />
+                            </Link>
+                            <button
+                                type="button"
+                                onClick={() => confirmDelete(`/assets/${asset.id}`, `Delete ${asset.name}?`)}
+                                className="rounded-lg p-1.5 text-slate-500 hover:bg-rose-50 hover:text-rose-600"
+                                title="Delete"
+                            >
+                                <Trash2 className="h-4 w-4" />
+                            </button>
+                        </>
+                    )}
+                </div>
+            ),
         },
     ];
 
@@ -102,6 +108,11 @@ export default function AssetsIndex({ assets, categories, schools, filters, cond
                 title="Asset & physical inventory"
                 description="Track equipment, furniture and office supplies by branch, location and condition."
             >
+                {can('assets.view') && (
+                    <Link href="/library/scan" className="btn-secondary">
+                        <ScanLine className="h-4 w-4" /> Scan
+                    </Link>
+                )}
                 {can('assets.view') && (
                     <Link href="/assets/categories" className="btn-secondary">
                         <Tags className="h-4 w-4" /> Categories

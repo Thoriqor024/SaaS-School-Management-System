@@ -1,5 +1,5 @@
 import { Link, router } from '@inertiajs/react';
-import { BookOpen, Library, Pencil, Plus, ScanLine, Tags, Trash2 } from 'lucide-react';
+import { BookOpen, Library, Pencil, Plus, QrCode, ScanLine, Tags, Trash2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import AppLayout from '../../Layouts/AppLayout';
 import {
@@ -102,6 +102,9 @@ export default function Books({ books, categories, schools, filters, counts }) {
             render: (book) =>
                 can('library.manage') ? (
                     <div className="flex items-center justify-end gap-1">
+                        <Link href={`/library/books/${book.id}/label`} className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-violet-700" title="Print barcode / QR label">
+                            <QrCode className="h-4 w-4" />
+                        </Link>
                         <Link href={`/library/books/${book.id}/edit`} className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-100 hover:text-brand-700">
                             <Pencil className="h-4 w-4" />
                         </Link>
@@ -119,7 +122,11 @@ export default function Books({ books, categories, schools, filters, counts }) {
 
     return (
         <AppLayout title="Library books">
-            <PageHeader title="Book catalog" description="Every copy has a barcode so scanners and QR labels can be added without schema changes.">
+            <PageHeader title="Book catalog"                 description="Every copy has a barcode; print a label or scan it from the lookup page."
+            >
+                <Link href="/library/scan" className="btn-secondary">
+                    <ScanLine className="h-4 w-4" /> Scan
+                </Link>
                 <Link href="/library/categories" className="btn-secondary">
                     <Tags className="h-4 w-4" /> Categories
                 </Link>
