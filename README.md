@@ -13,12 +13,13 @@ Built with **Laravel 11 · Inertia.js · React 18 · Tailwind CSS 3 · SQLite/My
 | **Global identity (HRD)** | Students with guardian profiles, teachers/staff/general employees, UUID keys, RBAC, school + branch scoping |
 | **Assets & inventory** | Categories, fixed assets and consumables, quantity, condition, status, location, assigned employee, branch |
 | **Transport** | Fleet (plate, capacity, tax/insurance), routes with ordered stops, driver assignment, student passengers, daily pickup/drop-off logs |
-| **Library** | Book catalog with barcode field, categories, student/staff memberships with loan limits, issue/return circulation, overdue tracking |
+| **Library** | Book catalog with barcode field, categories, student/staff memberships with loan limits, issue/return circulation, overdue tracking, printable Code 128 + QR labels and a scanner lookup page |
 | **Clinic** | Visit log with vitals and disposition, allergy/chronic-condition medical records, medicine stock with dispensing that decrements stock |
 | **Mess / cafeteria** | Daily menus with menu items, kitchen inventory with restock + expiry, meal logs per branch and 7-day trend |
-| **Dashboard & reports** | Headcount cards, inventory condition, active routes, clinic visits, library activity, per-school breakdown, cross-module report page with print |
+| **Dashboard & reports** | Headcount cards, inventory condition, active routes, clinic visits, library activity, per-school breakdown, cross-module report page with print, CSV and PDF export |
+| **Profiles** | Photo upload for students and employees (public disk, remove/replace), with initials fallback |
 
-**Intentionally excluded:** fee collection, invoicing, accounting/payroll and dormitory allocation. Those remain in the legacy systems and can read this platform through the read-only integration API.
+**Intentionally excluded:** fee collection, invoicing, accounting/payroll and dormitory allocation. Those remain in the legacy systems and integrate with this platform through the integration API (students and employees support writes; operational modules are read-only).
 
 ---
 
@@ -48,7 +49,10 @@ npm install
 npm run build     # production assets
 # or: npm run dev # Vite dev server with hot reload
 
-# 5. Serve
+# 5. Public file storage for uploaded photos
+php artisan storage:link
+
+# 6. Serve
 php artisan serve
 ```
 
@@ -111,18 +115,24 @@ Roles and permissions are stored in the database (`roles`, `permissions`, pivot 
 - Employees share one table with a `type` discriminator (`teacher`, `staff`, `general`).
 - Each record carries `school_id` and nullable `branch_id`.
 
-Read-only JSON API (see **Settings → Integration** in the app):
+JSON API (see **Settings → Integration** in the app):
 
 ```
-GET /api/v1/schools
-GET /api/v1/students?school_id=&branch_id=&status=&updated_since=&per_page=
-GET /api/v1/students/{uuid}
-GET /api/v1/employees
-GET /api/v1/assets
-GET /api/v1/transport/routes
-GET /api/v1/library/loans
-GET /api/v1/clinic/visits
-GET /api/v1/dashboard/summary
+GET    /api/v1/schools
+GET    /api/v1/students?school_id=&branch_id=&status=&updated_since=&per_page=
+GET    /api/v1/students/{uuid}
+POST   /api/v1/students
+PUT    /api/v1/students/{uuid}      (PATCH merges with the stored record)
+DELETE /api/v1/students/{uuid}
+GET    /api/v1/employees
+POST   /api/v1/employees
+PUT    /api/v1/employees/{uuid}     (PATCH supported)
+DELETE /api/v1/employees/{uuid}
+GET    /api/v1/assets
+GET    /api/v1/transport/routes
+GET    /api/v1/library/loans
+GET    /api/v1/clinic/visits
+GET    /api/v1/dashboard/summary
 ```
 
 Set a key in `.env` (never commit it):
@@ -136,15 +146,27 @@ Then call with either header:
 ```bash
 curl -H "X-API-Key: $INTEGRATION_API_KEY" http://localhost:8000/api/v1/students?per_page=25
 # or: -H "Authorization: Bearer $INTEGRATION_API_KEY"
+
+# Create a student (201 Created)
+curl -X POST http://localhost:8000/api/v1/students \
+  -H "X-API-Key: $INTEGRATION_API_KEY" -H "Content-Type: application/json" \
+  -d '{"school_id":"<uuid>","full_name":"Nadia Putri","gender":"female","status":"active"}'
+
+# Partial update (200 OK) and delete (204 No Content)
+curl -X PATCH http://localhost:8000/api/v1/students/<uuid> \
+  -H "X-API-Key: $INTEGRATION_API_KEY" -H "Content-Type: application/json" -d '{"classroom":"10A"}'
+curl -X DELETE http://localhost:8000/api/v1/students/<uuid> -H "X-API-Key: $INTEGRATION_API_KEY"
 ```
 
+Writes validate with the same rules as the web forms and return `422` with an `errors` object on failure.
 Without a configured key the endpoints answer `503`; a wrong key answers `401`.
 
 ## Project layout
 
 ```
-app/Http/Controllers          Module controllers (students, employees, assets, transport, library, clinic, cafeteria, reports, access)
-app/Http/Controllers/Api/V1   Read-only integration API
+app/Http/Controllers          Module controllers (students, employees, assets, transport, library, clinic, cafeteria, reports, access, labels, exports)
+app/Http/Controllers/Api/V1   Integration API (read + student/employee writes)
+app/Support                   Shared rules, report aggregation, media (photo/barcode/QR) helpers
 app/Http/Middleware           Inertia shared props, permission + API key middleware
 app/Models                    UUID Eloquent models with school scoping
 database/migrations           Schema for all modules
@@ -161,7 +183,7 @@ routes/api.php                Integration API routes
 ```bash
 php artisan migrate:fresh --seed   # rebuild demo data
 php artisan route:list             # inspect modules and permissions
-php artisan test                   # run the test suite
+php artisan test                   # 18 feature tests / 300 assertions (in-memory SQLite)
 npm run dev                        # Vite hot reload (run alongside php artisan serve)
 npm run build                      # compile assets for production
 ```
@@ -170,5 +192,22 @@ npm run build                      # compile assets for production
 
 - Mobile support is first-class: tables collapse into stacked records, filters wrap, navigation becomes a drawer, dialogs are bottom sheets.
 - Clinic medicine dispensing and library circulation update stock/copy counts atomically inside database transactions.
-- Barcodes are already stored on library books (`barcode`), so scanner/QR hardware and label printing can be added without a schema change.
+- Library books and assets each have a printable label (**Print label** icon in the list, or **Library → Scan**) with a Code 128 barcode and a QR code. `Library → Scan` accepts scanner input and finds the matching book or asset; book barcodes are generated automatically (`BK-XXXXXXXX`) when left empty.
+- Reports can be downloaded as CSV (Excel-friendly UTF-8) or PDF from the report page; both share the same aggregation as the on-screen page.
+- Photos live on the `public` disk under `/storage/photos/...`; run `php artisan storage:link` after cloning.
 - Asset codes and employee numbers are unique identifiers intended for physical labels and legacy reconciliation.
+
+## Tests
+
+The suite in `tests/Feature` is the permanent version of the module audit:
+
+| File | Covers |
+| --- | --- |
+| `PageAccessTest` | Every page of every module renders (43 URLs) |
+| `ModuleCrudTest` | Create → update → delete for schools, branches, students, employees, accounts, roles, assets, vehicles, routes, stops, passengers, logs, books, categories, members, loans, medicine, visits, dispense, records, menus, inventory, restock, meal logs |
+| `CrossModuleTest` | New student reaches reports, loans change stock and the student profile, clinic dispense changes medicine stock, transport assignment appears on the profile |
+| `TenancyTest` | School admin cannot read/write another school, role edits and school creation are super-admin only, teacher is read-only, non-super-admin without a school sees nothing |
+| `ApiTest` | Every read endpoint, key enforcement (401/503), student + employee create/update/delete, validation (422) |
+| `MediaExportTest` | Photo upload/remove, label generation, scan lookup, CSV + PDF export |
+
+`phpunit.xml` points the suite at an in-memory SQLite database, so it never touches the demo data.
