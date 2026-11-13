@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Asset;
+use App\Models\Employee;
 use App\Models\Role;
 use App\Models\School;
 use App\Models\Student;
@@ -35,12 +36,14 @@ class TenancyTest extends TestCase
         $ownSchool = $principal->school_id;
 
         $foreignStudent = Student::where('school_id', '!=', $ownSchool)->firstOrFail();
+        $foreignEmployee = Employee::where('school_id', '!=', $ownSchool)->firstOrFail();
         $foreignSchool = School::where('id', '!=', $ownSchool)->firstOrFail();
         $librarian = Role::where('slug', 'librarian')->firstOrFail();
 
         $this->actingAs($principal);
 
         $this->get('/students/'.$foreignStudent->id)->assertForbidden();
+        $this->get('/employees/'.$foreignEmployee->id)->assertForbidden();
         $this->post('/students', [
             'school_id' => $foreignSchool->id, 'full_name' => 'Cross School Attempt',
             'gender' => 'male', 'status' => 'active',
@@ -96,6 +99,10 @@ class TenancyTest extends TestCase
 
         $studentsProps = $this->pageProps('/students');
         $this->assertSame(0, $studentsProps['counts']['total'], 'Unassigned accounts must see no students.');
+
+        $employeesProps = $this->pageProps('/employees');
+        $this->assertSame(0, $employeesProps['counts']['total'], 'Unassigned accounts must see no employees.');
+        $this->get('/employees/'.Employee::firstOrFail()->id)->assertForbidden();
 
         $assetsProps = $this->pageProps('/assets');
         $this->assertSame(0, $assetsProps['counts']['items'], 'Unassigned accounts must see no assets.');

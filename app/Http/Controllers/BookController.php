@@ -72,7 +72,7 @@ class BookController extends Controller
 
     public function edit(Request $request, Book $book): Response
     {
-        abort_unless($this->canSee($request, $book), 403);
+        abort_unless($this->canAccess($request, $book->school_id), 403);
 
         return Inertia::render('Library/BookForm', [
             'book' => $book,
@@ -84,7 +84,7 @@ class BookController extends Controller
 
     public function update(Request $request, Book $book): RedirectResponse
     {
-        abort_unless($this->canSee($request, $book), 403);
+        abort_unless($this->canAccess($request, $book->school_id), 403);
 
         $data = $this->validated($request, $book);
         $this->ensureRecordScope($request, $data['school_id'], $data['branch_id'] ?? null);
@@ -95,7 +95,7 @@ class BookController extends Controller
 
     public function destroy(Request $request, Book $book): RedirectResponse
     {
-        abort_unless($this->canSee($request, $book), 403);
+        abort_unless($this->canAccess($request, $book->school_id), 403);
 
         if ($book->activeLoans()->exists()) {
             return back()->with('error', 'This book still has copies on loan.');
@@ -152,13 +152,6 @@ class BookController extends Controller
         $category->delete();
 
         return back()->with('success', 'Book category was deleted.');
-    }
-
-    protected function canSee(Request $request, Book $book): bool
-    {
-        $user = $request->user();
-
-        return $user->isSuperAdmin() || ($user->school_id !== null && $book->school_id === $user->school_id);
     }
 
     protected function validated(Request $request, ?Book $book = null): array

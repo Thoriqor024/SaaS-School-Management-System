@@ -83,7 +83,7 @@ class AssetController extends Controller
 
     public function edit(Request $request, Asset $asset): Response
     {
-        abort_unless($this->canSee($request, $asset), 403);
+        abort_unless($this->canAccess($request, $asset->school_id), 403);
 
         return Inertia::render('Assets/Form', [
             'asset' => $asset,
@@ -93,7 +93,7 @@ class AssetController extends Controller
 
     public function update(Request $request, Asset $asset): RedirectResponse
     {
-        abort_unless($this->canSee($request, $asset), 403);
+        abort_unless($this->canAccess($request, $asset->school_id), 403);
 
         $data = $this->validated($request, $asset);
         $this->ensureRecordScope($request, $data['school_id'], $data['branch_id'] ?? null);
@@ -104,7 +104,7 @@ class AssetController extends Controller
 
     public function destroy(Request $request, Asset $asset): RedirectResponse
     {
-        abort_unless($this->canSee($request, $asset), 403);
+        abort_unless($this->canAccess($request, $asset->school_id), 403);
 
         $asset->delete();
 
@@ -167,13 +167,6 @@ class AssetController extends Controller
         $category->delete();
 
         return back()->with('success', 'Asset category was deleted.');
-    }
-
-    protected function canSee(Request $request, Asset $asset): bool
-    {
-        $user = $request->user();
-
-        return $user->isSuperAdmin() || ! $user->school_id || $asset->school_id === $user->school_id;
     }
 
     protected function formOptions(Request $request): array

@@ -30,11 +30,14 @@ class ReportData
             ->when(! $user->isSuperAdmin(), fn ($q) => $q->where('id', $user->school_id))
             ->orderBy('name')->get(['id', 'name', 'code']);
 
-        $students = Student::query()->visibleTo($user)->when($schoolId, fn ($q, $v) => $q->where('school_id', $v));
-        $employees = Employee::query()->visibleTo($user)->when($schoolId, fn ($q, $v) => $q->where('school_id', $v));
-        $assets = Asset::query()->visibleTo($user)->when($schoolId, fn ($q, $v) => $q->where('school_id', $v));
-        $visits = ClinicVisit::query()->visibleTo($user)->when($schoolId, fn ($q, $v) => $q->where('school_id', $v));
-        $meals = MealLog::query()->visibleTo($user)->when($schoolId, fn ($q, $v) => $q->where('school_id', $v));
+        // Every metric below is confined to the user's school and the selected filter.
+        $scoped = fn ($query) => $query->visibleTo($user)->when($schoolId, fn ($q, $v) => $q->where('school_id', $v));
+
+        $students = $scoped(Student::query());
+        $employees = $scoped(Employee::query());
+        $assets = $scoped(Asset::query());
+        $visits = $scoped(ClinicVisit::query());
+        $meals = $scoped(MealLog::query());
 
         $schoolRows = $schools->map(fn (School $school) => [
             'id' => $school->id,
@@ -47,8 +50,7 @@ class ReportData
             'books' => (int) Book::where('school_id', $school->id)->sum('total_copies'),
         ]);
 
-        $byGrade = Student::query()->visibleTo($user)
-            ->when($schoolId, fn ($q, $v) => $q->where('school_id', $v))
+        $byGrade = $scoped(Student::query())
             ->selectRaw('grade_level, count(*) as total')->groupBy('grade_level')->orderBy('grade_level')->get()
             ->map(fn ($row) => ['label' => 'Grade '.($row->grade_level ?: '—'), 'value' => (int) $row->total]);
 
@@ -62,23 +64,20 @@ class ReportData
                 'female' => (int) $row->female,
             ]);
 
-        $employeesByType = Employee::query()->visibleTo($user)
-            ->when($schoolId, fn ($q, $v) => $q->where('school_id', $v))
+        $employeesByType = $scoped(Employee::query())
             ->selectRaw('type, count(*) as total')->groupBy('type')->get()
             ->map(fn ($row) => ['label' => ucfirst($row->type), 'value' => (int) $row->total]);
 
-        $assetsByCondition = Asset::query()->visibleTo($user)
-            ->when($schoolId, fn ($q, $v) => $q->where('school_id', $v))
+        $assetsByCondition = $scoped(Asset::query())
             ->selectRaw('condition, count(*) as total, sum(quantity) as units')->groupBy('condition')->get()
             ->map(fn ($row) => ['label' => str_replace('_', ' ', ucfirst($row->condition)), 'value' => (int) $row->total, 'units' => (int) $row->units]);
 
         $assetsByCategory = AssetCategory::query()
-            ->withCount(['assets' => fn ($q) => $q->visibleTo($user)->when($schoolId, fn ($inner, $v) => $inner->where('school_id', $v))])
+            ->withCount(['assets' => fn ($q) => $scoped($q)])
             ->orderByDesc('assets_count')->limit(8)->get()
             ->map(fn ($category) => ['label' => $category->name, 'value' => $category->assets_count]);
 
-        $routeUtilization = TransportRoute::query()->visibleTo($user)
-            ->when($schoolId, fn ($q, $v) => $q->where('school_id', $v))
+        $routeUtilization = $scoped(TransportRoute::query())
             ->with('vehicle:id,capacity,plate_number')
             ->withCount(['passengers' => fn ($q) => $q->where('is_active', true)])
             ->orderByDesc('passengers_count')->limit(8)->get()
@@ -93,17 +92,15 @@ class ReportData
             ]);
 
         $libraryByCategory = BookCategory::query()
-            ->withCount(['books' => fn ($q) => $q->visibleTo($user)->when($schoolId, fn ($inner, $v) => $inner->where('school_id', $v))])
+            ->withCount(['books' => fn ($q) => $scoped($q)])
             ->orderByDesc('books_count')->limit(8)->get()
             ->map(fn ($category) => ['label' => $category->name, 'value' => $category->books_count]);
 
-        $clinicByDisposition = ClinicVisit::query()->visibleTo($user)
-            ->when($schoolId, fn ($q, $v) => $q->where('school_id', $v))
+        $clinicByDisposition = $scoped(ClinicVisit::query())
             ->selectRaw('disposition, count(*) as total')->groupBy('disposition')->get()
             ->map(fn ($row) => ['label' => str_replace('_', ' ', ucfirst($row->disposition)), 'value' => (int) $row->total]);
 
-        $topComplaints = ClinicVisit::query()->visibleTo($user)
-            ->when($schoolId, fn ($q, $v) => $q->where('school_id', $v))
+        $topComplaints = $scoped(ClinicVisit::query())
             ->selectRaw('complaint, count(*) as total')->groupBy('complaint')->orderByDesc('total')->limit(6)->get()
             ->map(fn ($row) => ['label' => $row->complaint, 'value' => (int) $row->total]);
 
@@ -129,10 +126,10 @@ class ReportData
                 'students' => (clone $students)->where('status', 'active')->count(),
                 'employees' => (clone $employees)->where('is_active', true)->count(),
                 'asset_units' => (int) (clone $assets)->sum('quantity'),
-                'active_routes' => TransportRoute::query()->visibleTo($user)->when($schoolId, fn ($q, $v) => $q->where('school_id', $v))->where('is_active', true)->count(),
-                'passengers' => TransportPassenger::query()->whereHas('route', fn ($q) => $q->visibleTo($user)->when($schoolId, fn ($inner, $v) => $inner->where('school_id', $v)))->where('is_active', true)->count(),
-                'book_copies' => (int) Book::query()->visibleTo($user)->when($schoolId, fn ($q, $v) => $q->where('school_id', $v))->sum('total_copies'),
-                'active_loans' => BookLoan::query()->visibleTo($user)->when($schoolId, fn ($q, $v) => $q->where('school_id', $v))->whereIn('status', ['borrowed', 'overdue'])->count(),
+                'active_routes' => $scoped(TransportRoute::query())->where('is_active', true)->count(),
+                'passengers' => TransportPassenger::query()->whereHas('route', fn ($q) => $scoped($q))->where('is_active', true)->count(),
+                'book_copies' => (int) $scoped(Book::query())->sum('total_copies'),
+                'active_loans' => $scoped(BookLoan::query())->whereIn('status', ['borrowed', 'overdue'])->count(),
                 'clinic_visits_30d' => (clone $visits)->where('visit_date', '>=', Carbon::today()->subDays(30))->count(),
                 'meals_served_30d' => (int) (clone $meals)->where('meal_date', '>=', Carbon::today()->subDays(30))
                     ->selectRaw('coalesce(sum(students_served + staff_served + guests_served), 0) as total')->value('total'),

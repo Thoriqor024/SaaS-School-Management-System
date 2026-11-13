@@ -94,7 +94,7 @@ class StudentController extends Controller
 
     public function show(Request $request, Student $student): Response
     {
-        abort_unless($this->canSee($request, $student), 403);
+        abort_unless($this->canAccess($request, $student->school_id), 403);
 
         $student->load([
             'school:id,name,code', 'branch:id,name',
@@ -143,7 +143,7 @@ class StudentController extends Controller
 
     public function edit(Request $request, Student $student): Response
     {
-        abort_unless($this->canSee($request, $student), 403);
+        abort_unless($this->canAccess($request, $student->school_id), 403);
 
         return Inertia::render('Students/Form', [
             'student' => $student,
@@ -153,7 +153,7 @@ class StudentController extends Controller
 
     public function update(Request $request, Student $student): RedirectResponse
     {
-        abort_unless($this->canSee($request, $student), 403);
+        abort_unless($this->canAccess($request, $student->school_id), 403);
 
         $data = $this->validated($request, $student);
         $this->ensureRecordScope($request, $data['school_id'], $data['branch_id'] ?? null);
@@ -166,19 +166,12 @@ class StudentController extends Controller
 
     public function destroy(Request $request, Student $student): RedirectResponse
     {
-        abort_unless($this->canSee($request, $student), 403);
+        abort_unless($this->canAccess($request, $student->school_id), 403);
 
         $name = $student->full_name;
         $student->delete();
 
         return redirect()->route('students.index')->with('success', $name.' was removed from the student database.');
-    }
-
-    protected function canSee(Request $request, Student $student): bool
-    {
-        $user = $request->user();
-
-        return $user->isSuperAdmin() || ($user->school_id !== null && $student->school_id === $user->school_id);
     }
 
     protected function gradeLevels(): array

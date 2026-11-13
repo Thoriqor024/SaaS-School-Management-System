@@ -100,7 +100,7 @@ class TransportRouteController extends Controller
 
     public function edit(Request $request, TransportRoute $route): Response
     {
-        abort_unless($this->canSee($request, $route), 403);
+        abort_unless($this->canAccess($request, $route->school_id), 403);
 
         return Inertia::render('Transport/RouteForm', [
             'route' => [
@@ -113,7 +113,7 @@ class TransportRouteController extends Controller
 
     public function update(Request $request, TransportRoute $route): RedirectResponse
     {
-        abort_unless($this->canSee($request, $route), 403);
+        abort_unless($this->canAccess($request, $route->school_id), 403);
 
         $data = $this->validated($request, $route);
         $this->ensureRecordScope($request, $data['school_id'], $data['branch_id'] ?? null);
@@ -133,18 +133,11 @@ class TransportRouteController extends Controller
 
     public function destroy(Request $request, TransportRoute $route): RedirectResponse
     {
-        abort_unless($this->canSee($request, $route), 403);
+        abort_unless($this->canAccess($request, $route->school_id), 403);
 
         $route->delete();
 
         return redirect()->route('transport.routes.index')->with('success', 'Route was deleted.');
-    }
-
-    protected function canSee(Request $request, TransportRoute $route): bool
-    {
-        $user = $request->user();
-
-        return $user->isSuperAdmin() || ($user->school_id !== null && $route->school_id === $user->school_id);
     }
 
     protected function formOptions(Request $request): array

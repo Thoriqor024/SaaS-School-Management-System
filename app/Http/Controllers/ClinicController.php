@@ -89,7 +89,7 @@ class ClinicController extends Controller
 
     public function editVisit(Request $request, ClinicVisit $visit): Response
     {
-        abort_unless($this->canSee($request, $visit), 403);
+        abort_unless($this->canAccess($request, $visit->school_id), 403);
 
         return Inertia::render('Clinic/VisitForm', [
             'visit' => [
@@ -116,7 +116,7 @@ class ClinicController extends Controller
 
     public function updateVisit(Request $request, ClinicVisit $visit): RedirectResponse
     {
-        abort_unless($this->canSee($request, $visit), 403);
+        abort_unless($this->canAccess($request, $visit->school_id), 403);
 
         $data = $this->validateVisit($request);
         $this->ensureRecordScope($request, $data['school_id'], $data['branch_id'] ?? null);
@@ -127,7 +127,7 @@ class ClinicController extends Controller
 
     public function destroyVisit(Request $request, ClinicVisit $visit): RedirectResponse
     {
-        abort_unless($this->canSee($request, $visit), 403);
+        abort_unless($this->canAccess($request, $visit->school_id), 403);
 
         DB::transaction(function () use ($visit) {
             foreach ($visit->dispenses()->with('medicine')->get() as $dispense) {
@@ -141,7 +141,7 @@ class ClinicController extends Controller
 
     public function dispense(Request $request, ClinicVisit $visit): RedirectResponse
     {
-        abort_unless($this->canSee($request, $visit), 403);
+        abort_unless($this->canAccess($request, $visit->school_id), 403);
 
         $data = $request->validate([
             'medicine_id' => ['required', 'uuid', 'exists:medicines,id'],
@@ -252,7 +252,7 @@ class ClinicController extends Controller
 
     public function destroyMedicine(Request $request, Medicine $medicine): RedirectResponse
     {
-        abort_unless($request->user()->isSuperAdmin() || $medicine->school_id === $request->user()->school_id, 403);
+        abort_unless($this->canAccess($request, $medicine->school_id), 403);
 
         $medicine->delete();
 
@@ -378,18 +378,11 @@ class ClinicController extends Controller
 
     public function destroyRecord(Request $request, MedicalRecord $record): RedirectResponse
     {
-        abort_unless($request->user()->isSuperAdmin() || $record->school_id === $request->user()->school_id, 403);
+        abort_unless($this->canAccess($request, $record->school_id), 403);
 
         $record->delete();
 
         return back()->with('success', 'Medical record was deleted.');
-    }
-
-    protected function canSee(Request $request, ClinicVisit $visit): bool
-    {
-        $user = $request->user();
-
-        return $user->isSuperAdmin() || ($user->school_id !== null && $visit->school_id === $user->school_id);
     }
 
     protected function visitOptions(Request $request): array

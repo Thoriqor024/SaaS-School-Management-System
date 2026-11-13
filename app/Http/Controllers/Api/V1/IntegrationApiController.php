@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Http\Controllers\Concerns\HandlesPhotos;
 use App\Http\Controllers\Controller;
 use App\Models\Asset;
 use App\Models\BookLoan;
@@ -20,6 +21,8 @@ use Illuminate\Support\Facades\Validator;
 
 class IntegrationApiController extends Controller
 {
+    use HandlesPhotos;
+
     public function schools(): JsonResponse
     {
         return response()->json([
@@ -75,18 +78,7 @@ class IntegrationApiController extends Controller
             ->when($request->input('updated_since'), fn ($q, $v) => $q->where('updated_at', '>=', $v))
             ->orderBy('full_name')
             ->paginate($request->integer('per_page', 50))
-            ->through(fn (Employee $employee) => [
-                'id' => $employee->id,
-                'employee_number' => $employee->employee_number,
-                'full_name' => $employee->full_name,
-                'type' => $employee->type,
-                'position' => $employee->position,
-                'department' => $employee->department,
-                'school_id' => $employee->school_id,
-                'branch_id' => $employee->branch_id,
-                'is_active' => $employee->is_active,
-                'updated_at' => $employee->updated_at?->toIso8601String(),
-            ]);
+            ->through(fn (Employee $employee) => $this->employeePayload($employee));
 
         return response()->json($employees);
     }
@@ -258,18 +250,15 @@ class IntegrationApiController extends Controller
         return response()->json(null, 204);
     }
 
+    /**
+     * Keep the validated payload, resolving the upload/removal into photo_path.
+     */
     protected function writable(Request $request, array $data, string $directory, ?string $currentPhoto): array
     {
-        $payload = collect($data)->except(['photo', 'remove_photo'])->all();
-
-        if ($request->hasFile('photo')) {
-            $payload['photo_path'] = Media::storePhoto($request->file('photo'), $directory, $currentPhoto);
-        } elseif ($request->boolean('remove_photo')) {
-            Media::deletePhoto($currentPhoto);
-            $payload['photo_path'] = null;
-        }
-
-        return $payload;
+        return [
+            ...collect($data)->except(['photo', 'remove_photo'])->all(),
+            'photo_path' => $this->resolvePhoto($request, $currentPhoto, $directory),
+        ];
     }
 
     protected function employeePayload(Employee $employee): array

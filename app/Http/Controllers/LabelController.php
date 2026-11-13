@@ -13,52 +13,38 @@ class LabelController extends Controller
 {
     public function book(Request $request, Book $book): Response
     {
-        abort_unless(
-            $request->user()->isSuperAdmin() || ($request->user()->school_id !== null && $book->school_id === $request->user()->school_id),
-            403
-        );
+        abort_unless($this->canAccess($request, $book->school_id), 403);
 
-        $code = $book->barcode ?: $book->id;
-
-        return Inertia::render('Library/Label', [
-            'title' => $book->title,
-            'subtitle' => $book->author ?: 'Library collection',
-            'lines' => array_values(array_filter([
+        return $this->label(
+            code: $book->barcode ?: $book->id,
+            title: $book->title,
+            subtitle: $book->author ?: 'Library collection',
+            lines: [
                 $book->category?->name,
                 $book->shelf_location ? 'Shelf '.$book->shelf_location : null,
                 $book->isbn ? 'ISBN '.$book->isbn : null,
-            ])),
-            'code' => $code,
-            'barcode' => Media::barcodeSvg($code),
-            'qr' => Media::qrSvg($code),
-            'backUrl' => '/library/books',
-            'backLabel' => 'Back to catalog',
-        ]);
+            ],
+            backUrl: '/library/books',
+            backLabel: 'Back to catalog',
+        );
     }
 
     public function asset(Request $request, Asset $asset): Response
     {
-        abort_unless(
-            $request->user()->isSuperAdmin() || ($request->user()->school_id !== null && $asset->school_id === $request->user()->school_id),
-            403
-        );
+        abort_unless($this->canAccess($request, $asset->school_id), 403);
 
-        $code = $asset->asset_code;
-
-        return Inertia::render('Library/Label', [
-            'title' => $asset->name,
-            'subtitle' => $asset->category?->name ?: 'Physical asset',
-            'lines' => array_values(array_filter([
+        return $this->label(
+            code: $asset->asset_code,
+            title: $asset->name,
+            subtitle: $asset->category?->name ?: 'Physical asset',
+            lines: [
                 $asset->location,
                 $asset->branch?->name,
                 $asset->quantity.' '.$asset->unit,
-            ])),
-            'code' => $code,
-            'barcode' => Media::barcodeSvg($code),
-            'qr' => Media::qrSvg($code),
-            'backUrl' => '/assets',
-            'backLabel' => 'Back to assets',
-        ]);
+            ],
+            backUrl: '/assets',
+            backLabel: 'Back to assets',
+        );
     }
 
     /**
@@ -115,6 +101,20 @@ class LabelController extends Controller
             'assets' => $assets,
             'canManageBooks' => $user->hasPermission('library.manage'),
             'canManageAssets' => $user->hasPermission('assets.manage'),
+        ]);
+    }
+
+    protected function label(string $code, string $title, string $subtitle, array $lines, string $backUrl, string $backLabel): Response
+    {
+        return Inertia::render('Library/Label', [
+            'title' => $title,
+            'subtitle' => $subtitle,
+            'lines' => array_values(array_filter($lines)),
+            'code' => $code,
+            'barcode' => Media::barcodeSvg($code),
+            'qr' => Media::qrSvg($code),
+            'backUrl' => $backUrl,
+            'backLabel' => $backLabel,
         ]);
     }
 }

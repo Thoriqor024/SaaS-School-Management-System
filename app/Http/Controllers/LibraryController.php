@@ -127,7 +127,7 @@ class LibraryController extends Controller
 
     public function destroyMember(Request $request, LibraryMember $member): RedirectResponse
     {
-        abort_unless($request->user()->isSuperAdmin() || $member->school_id === $request->user()->school_id, 403);
+        abort_unless($this->canAccess($request, $member->school_id), 403);
 
         if ($member->activeLoans()->exists()) {
             return back()->with('error', 'This member still has books on loan.');
@@ -244,7 +244,7 @@ class LibraryController extends Controller
 
     public function returnLoan(Request $request, BookLoan $loan): RedirectResponse
     {
-        abort_unless($request->user()->isSuperAdmin() || $loan->school_id === $request->user()->school_id, 403);
+        abort_unless($this->canAccess($request, $loan->school_id), 403);
 
         if ($loan->status === 'returned') {
             return back()->with('error', 'This loan has already been returned.');
@@ -262,7 +262,7 @@ class LibraryController extends Controller
 
     public function destroyLoan(Request $request, BookLoan $loan): RedirectResponse
     {
-        abort_unless($request->user()->isSuperAdmin() || $loan->school_id === $request->user()->school_id, 403);
+        abort_unless($this->canAccess($request, $loan->school_id), 403);
 
         if ($loan->status !== 'returned') {
             $loan->book?->increment('available_copies');

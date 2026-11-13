@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\HandlesPhotos;
 use App\Models\Employee;
+use App\Models\TransportRoute;
 use App\Support\EmployeeRules;
 use App\Support\Media;
 use App\Support\OptionLists;
@@ -77,7 +78,7 @@ class EmployeeController extends Controller
 
     public function show(Request $request, Employee $employee): Response
     {
-        abort_unless($this->canSee($request, $employee), 403);
+        abort_unless($this->canAccess($request, $employee->school_id), 403);
 
         $employee->load(['school:id,name,code', 'branch:id,name', 'medicalRecord', 'user:id,name,email,employee_id']);
 
@@ -89,7 +90,7 @@ class EmployeeController extends Controller
             'disposition' => $visit->disposition,
         ]);
 
-        $routes = \App\Models\TransportRoute::query()
+        $routes = TransportRoute::query()
             ->visibleTo($request->user())
             ->where('driver_employee_id', $employee->id)
             ->get(['id', 'name', 'code']);
@@ -115,7 +116,7 @@ class EmployeeController extends Controller
 
     public function edit(Request $request, Employee $employee): Response
     {
-        abort_unless($this->canSee($request, $employee), 403);
+        abort_unless($this->canAccess($request, $employee->school_id), 403);
 
         return Inertia::render('Employees/Form', [
             'employee' => $employee,
@@ -125,7 +126,7 @@ class EmployeeController extends Controller
 
     public function update(Request $request, Employee $employee): RedirectResponse
     {
-        abort_unless($this->canSee($request, $employee), 403);
+        abort_unless($this->canAccess($request, $employee->school_id), 403);
 
         $data = $this->validated($request, $employee);
         $this->ensureRecordScope($request, $data['school_id'], $data['branch_id'] ?? null);
@@ -138,19 +139,12 @@ class EmployeeController extends Controller
 
     public function destroy(Request $request, Employee $employee): RedirectResponse
     {
-        abort_unless($this->canSee($request, $employee), 403);
+        abort_unless($this->canAccess($request, $employee->school_id), 403);
 
         $name = $employee->full_name;
         $employee->delete();
 
         return redirect()->route('employees.index')->with('success', $name.' was removed from the employee database.');
-    }
-
-    protected function canSee(Request $request, Employee $employee): bool
-    {
-        $user = $request->user();
-
-        return $user->isSuperAdmin() || ! $user->school_id || $employee->school_id === $user->school_id;
     }
 
     protected function formOptions(Request $request): array
