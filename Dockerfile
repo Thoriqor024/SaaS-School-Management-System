@@ -18,7 +18,7 @@ RUN composer dump-autoload --optimize --no-dev --no-interaction
 FROM php:8.3-apache
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends libpq-dev libpng-dev libzip-dev unzip \
+    && apt-get install -y --no-install-recommends libpq-dev libsqlite3-dev libpng-dev libzip-dev unzip \
     && docker-php-ext-install pdo_pgsql pdo_sqlite gd zip \
     && a2enmod rewrite headers \
     && rm -rf /var/lib/apt/lists/*
