@@ -22,7 +22,7 @@ export default function Integration({ baseUrl, apiKeyConfigured, endpoints, samp
         <AppLayout title="Integration">
             <PageHeader
                 title="Integration readiness"
-                description="This platform owns the core identity records. Finance and dormitory modules stay in your legacy systems and read this data through a read-only API."
+                description="This platform owns the core identity records. Finance and dormitory modules stay in your legacy systems and integrate through this API."
             >
                 <Badge tone={apiKeyConfigured ? 'emerald' : 'amber'}>
                     {apiKeyConfigured ? 'API key configured' : 'API key not set'}
@@ -40,12 +40,16 @@ export default function Integration({ baseUrl, apiKeyConfigured, endpoints, samp
 
             <div className="grid gap-4 lg:grid-cols-3">
                 <Card className="lg:col-span-2">
-                    <CardHeader title="Read-only API endpoints" description={`Base URL: ${baseUrl}/api/v1`} />
+                    <CardHeader title="API endpoints" description={`Base URL: ${baseUrl}/api/v1 · student and employee records support reads and writes`} />
                     <ul className="divide-y divide-slate-100">
                         {endpoints.map((endpoint) => (
                             <li key={endpoint.path} className="flex flex-col gap-1 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5">
                                 <div className="flex min-w-0 items-start gap-2.5">
-                                    <span className="mt-0.5 rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-bold text-emerald-700">
+                                    <span
+                                        className={`mt-0.5 shrink-0 rounded px-1.5 py-0.5 text-[10px] font-bold ${
+                                            endpoint.method === 'GET' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'
+                                        }`}
+                                    >
                                         {endpoint.method}
                                     </span>
                                     <span className="truncate font-mono text-xs text-slate-700">{endpoint.path}</span>
@@ -69,8 +73,10 @@ export default function Integration({ baseUrl, apiKeyConfigured, endpoints, samp
                                 Requests are validated with a constant-time comparison. Rotate the key in your secret manager and
                                 redeploy.
                             </p>
-                            <p className="flex items-center gap-2 text-xs text-slate-500">
-                                <ShieldCheck className="h-4 w-4 text-emerald-500" /> Read-only: no write endpoints are exposed.
+                            <p className="flex items-start gap-2 text-xs text-slate-500">
+                                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
+                                <span>Students and employees accept create, update and delete. Assets, transport, library, clinic and
+                                    cafeteria endpoints stay read-only for reconciliation.</span>
                             </p>
                         </div>
                     </Card>

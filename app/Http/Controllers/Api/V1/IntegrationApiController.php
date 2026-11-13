@@ -11,8 +11,12 @@ use App\Models\Employee;
 use App\Models\School;
 use App\Models\Student;
 use App\Models\TransportRoute;
+use App\Support\EmployeeRules;
+use App\Support\Media;
+use App\Support\StudentRules;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 class IntegrationApiController extends Controller
 {
@@ -202,6 +206,89 @@ class IntegrationApiController extends Controller
         ]);
     }
 
+    public function storeStudent(Request $request): JsonResponse
+    {
+        $data = Validator::make($request->all(), StudentRules::rules())->validate();
+
+        $student = Student::create($this->writable($request, $data, 'photos/students', null));
+
+        return response()->json(['data' => $this->studentPayload($student)], 201);
+    }
+
+    public function updateStudent(Request $request, Student $student): JsonResponse
+    {
+        $existing = collect($student->getAttributes())->only(array_keys(StudentRules::rules($student)))->all();
+        $data = Validator::make([...$existing, ...$request->all()], StudentRules::rules($student))->validate();
+
+        $student->update($this->writable($request, $data, 'photos/students', $student->photo_path));
+
+        return response()->json(['data' => $this->studentPayload($student->refresh())]);
+    }
+
+    public function destroyStudent(Student $student): JsonResponse
+    {
+        $student->delete();
+
+        return response()->json(null, 204);
+    }
+
+    public function storeEmployee(Request $request): JsonResponse
+    {
+        $data = Validator::make($request->all(), EmployeeRules::rules())->validate();
+
+        $employee = Employee::create($this->writable($request, $data, 'photos/employees', null));
+
+        return response()->json(['data' => $this->employeePayload($employee)], 201);
+    }
+
+    public function updateEmployee(Request $request, Employee $employee): JsonResponse
+    {
+        $existing = collect($employee->getAttributes())->only(array_keys(EmployeeRules::rules($employee)))->all();
+        $data = Validator::make([...$existing, ...$request->all()], EmployeeRules::rules($employee))->validate();
+
+        $employee->update($this->writable($request, $data, 'photos/employees', $employee->photo_path));
+
+        return response()->json(['data' => $this->employeePayload($employee->refresh())]);
+    }
+
+    public function destroyEmployee(Employee $employee): JsonResponse
+    {
+        $employee->delete();
+
+        return response()->json(null, 204);
+    }
+
+    protected function writable(Request $request, array $data, string $directory, ?string $currentPhoto): array
+    {
+        $payload = collect($data)->except(['photo', 'remove_photo'])->all();
+
+        if ($request->hasFile('photo')) {
+            $payload['photo_path'] = Media::storePhoto($request->file('photo'), $directory, $currentPhoto);
+        } elseif ($request->boolean('remove_photo')) {
+            Media::deletePhoto($currentPhoto);
+            $payload['photo_path'] = null;
+        }
+
+        return $payload;
+    }
+
+    protected function employeePayload(Employee $employee): array
+    {
+        return [
+            'id' => $employee->id,
+            'employee_number' => $employee->employee_number,
+            'full_name' => $employee->full_name,
+            'type' => $employee->type,
+            'position' => $employee->position,
+            'department' => $employee->department,
+            'school_id' => $employee->school_id,
+            'branch_id' => $employee->branch_id,
+            'is_active' => $employee->is_active,
+            'photo_url' => Media::photoUrl($employee->photo_path),
+            'updated_at' => $employee->updated_at?->toIso8601String(),
+        ];
+    }
+
     protected function studentPayload(Student $student): array
     {
         return [
@@ -216,6 +303,7 @@ class IntegrationApiController extends Controller
             'enrollment_year' => $student->enrollment_year,
             'school_id' => $student->school_id,
             'branch_id' => $student->branch_id,
+            'photo_url' => Media::photoUrl($student->photo_path),
             'updated_at' => $student->updated_at?->toIso8601String(),
         ];
     }
