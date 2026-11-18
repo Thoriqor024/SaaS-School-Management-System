@@ -171,4 +171,43 @@ class TenancyTest extends TestCase
         $response->assertSessionHasErrors('assigned_to_employee_id');
         $this->assertDatabaseMissing('assets', ['asset_code' => 'X-SCHOOL-1']);
     }
+
+    public function test_tu_role_can_create_an_asset_for_another_school(): void
+    {
+        $role = Role::where('slug', 'tu')->firstOrFail();
+        $homeSchool = School::orderBy('code')->firstOrFail();
+        $otherSchool = School::where('id', '!=', $homeSchool->id)->orderBy('code')->firstOrFail();
+
+        $account = User::create([
+            'name' => 'TU Officer',
+            'email' => 'tu@siswahub.test',
+            'password' => Hash::make('password'),
+            'school_id' => $homeSchool->id,
+            'branch_id' => $homeSchool->branches()->value('id'),
+            'is_active' => true,
+        ]);
+        $account->roles()->sync([$role->id]);
+
+        $this->actingAs($account);
+
+        $response = $this->post('/assets', [
+            'school_id' => $otherSchool->id,
+            'branch_id' => $otherSchool->branches()->value('id'),
+            'asset_code' => 'TU-X-1',
+            'name' => 'Cross School Asset',
+            'type' => 'fixed',
+            'quantity' => 2,
+            'unit' => 'unit',
+            'condition' => 'good',
+            'status' => 'in_use',
+        ]);
+
+        $response->assertSessionHasNoErrors();
+        $response->assertRedirect();
+        $this->assertDatabaseHas('assets', [
+            'asset_code' => 'TU-X-1',
+            'name' => 'Cross School Asset',
+            'school_id' => $otherSchool->id,
+        ]);
+    }
 }

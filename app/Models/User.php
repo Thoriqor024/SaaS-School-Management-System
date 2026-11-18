@@ -76,12 +76,13 @@ class User extends Authenticatable
     /**
      * Roles that work across the whole group instead of a single school.
      */
-    public const GROUP_SCOPE_ROLES = ['super_admin', 'asset_manager', 'librarian'];
+    public const GROUP_SCOPE_ROLES = ['super_admin', 'asset_manager', 'librarian', 'tu'];
 
     /**
      * Whether the account may read and write records in every school.
-     * Super admins always can; asset managers and librarians are group-wide so
-     * inventory and library records can be maintained for any branch.
+     * Super admins always can; asset managers, librarians and TU staff are
+     * group-wide so inventories, library and administrative records can be
+     * maintained for any branch.
      */
     public function hasGroupScope(): bool
     {

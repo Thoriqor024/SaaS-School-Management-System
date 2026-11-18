@@ -82,6 +82,13 @@ class AccessSeeder extends Seeder
                 'permissions' => ['dashboard.view', 'library.view', 'library.manage', 'students.view', 'employees.view', 'reports.view'],
             ],
             [
+                'name' => 'TU',
+                'slug' => 'tu',
+                'description' => 'Tata Usaha: physical inventory, equipment condition and locations across every school.',
+                'level' => 60,
+                'permissions' => ['dashboard.view', 'assets.view', 'assets.manage', 'reports.view'],
+            ],
+            [
                 'name' => 'Clinic Officer',
                 'slug' => 'clinic_officer',
                 'description' => 'Clinic visits, medical records and medicine stock.',
