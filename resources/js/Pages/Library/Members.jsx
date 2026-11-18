@@ -17,7 +17,7 @@ import {
     StatusBadge,
     confirmDelete,
 } from '../../Components/ui';
-import { useCan } from '../../lib/auth';
+import { useAuthUser, useCan } from '../../lib/auth';
 import { formatDate, formatNumber, titleCase } from '../../lib/format';
 
 export default function Members({ members, students, employees, schools, branches, filters, counts }) {
@@ -174,8 +174,11 @@ function Tile({ label, value, icon: Icon, tone = 'indigo' }) {
 }
 
 function MemberModal({ students, employees, schools, branches, onClose }) {
+    const authUser = useAuthUser();
+    const defaultSchoolId = authUser?.school?.id ?? schools[0]?.id ?? '';
+
     const { data, setData, post, processing, errors } = useForm({
-        school_id: schools[0]?.id ?? '',
+        school_id: defaultSchoolId,
         branch_id: '',
         member_type: 'student',
         student_id: '',
@@ -188,7 +191,8 @@ function MemberModal({ students, employees, schools, branches, onClose }) {
     });
 
     const visibleBranches = branches.filter((branch) => branch.school_id === data.school_id);
-    const people = data.member_type === 'student' ? students : employees;
+    // A membership may only be linked to a person of the selected school.
+    const people = (data.member_type === 'student' ? students : employees).filter((person) => person.school_id === data.school_id);
 
     const submit = (event) => {
         event.preventDefault();
@@ -221,7 +225,10 @@ function MemberModal({ students, employees, schools, branches, onClose }) {
                     </Select>
                 </Field>
                 <Field label="School" required error={errors.school_id}>
-                    <Select value={data.school_id} onChange={(e) => setData((values) => ({ ...values, school_id: e.target.value, branch_id: '' }))}>
+                    <Select
+                        value={data.school_id}
+                        onChange={(e) => setData((values) => ({ ...values, school_id: e.target.value, branch_id: '', student_id: '', employee_id: '' }))}
+                    >
                         {schools.map((school) => (
                             <option key={school.id} value={school.id}>{school.name}</option>
                         ))}

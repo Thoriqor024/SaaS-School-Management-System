@@ -3,15 +3,21 @@ import { ArrowLeft, Loader2, Save } from 'lucide-react';
 import { useMemo } from 'react';
 import AppLayout from '../../Layouts/AppLayout';
 import { Badge, Card, CardHeader, Field, Input, PageHeader, Select, Textarea } from '../../Components/ui';
+import { useAuthUser } from '../../lib/auth';
 import { titleCase } from '../../lib/format';
 
 const toDate = (value) => (value ? String(value).slice(0, 10) : '');
 
 export default function AssetForm({ asset, schools, branches, categories, employees, conditions, statuses }) {
     const isEdit = Boolean(asset);
+    const authUser = useAuthUser();
+
+    // Group-wide roles can pick any school; default to the account's own school so
+    // records are not filed under the wrong branch.
+    const defaultSchoolId = authUser?.school?.id ?? schools[0]?.id ?? '';
 
     const { data, setData, post, put, processing, errors } = useForm({
-        school_id: asset?.school_id ?? schools[0]?.id ?? '',
+        school_id: asset?.school_id ?? defaultSchoolId,
         branch_id: asset?.branch_id ?? '',
         asset_category_id: asset?.asset_category_id ?? '',
         asset_code: asset?.asset_code ?? `AST-${String(Date.now()).slice(-5)}`,
@@ -31,6 +37,11 @@ export default function AssetForm({ asset, schools, branches, categories, employ
     });
 
     const visibleBranches = useMemo(() => branches.filter((branch) => branch.school_id === data.school_id), [branches, data.school_id]);
+    // An asset may only be assigned to an employee of the selected school.
+    const visibleEmployees = useMemo(
+        () => employees.filter((employee) => employee.school_id === data.school_id),
+        [employees, data.school_id]
+    );
 
     const submit = (event) => {
         event.preventDefault();
@@ -107,7 +118,9 @@ export default function AssetForm({ asset, schools, branches, categories, employ
                         <Field label="School" required error={errors.school_id}>
                             <Select
                                 value={data.school_id}
-                                onChange={(e) => setData((values) => ({ ...values, school_id: e.target.value, branch_id: '' }))}
+                                onChange={(e) =>
+                                    setData((values) => ({ ...values, school_id: e.target.value, branch_id: '', assigned_to_employee_id: '' }))
+                                }
                             >
                                 <option value="">Select a school</option>
                                 {schools.map((school) => (
@@ -126,7 +139,7 @@ export default function AssetForm({ asset, schools, branches, categories, employ
                         <Field label="Assigned to" error={errors.assigned_to_employee_id}>
                             <Select value={data.assigned_to_employee_id} onChange={(e) => setData('assigned_to_employee_id', e.target.value)}>
                                 <option value="">Unassigned</option>
-                                {employees.map((employee) => (
+                                {visibleEmployees.map((employee) => (
                                     <option key={employee.id} value={employee.id}>{employee.full_name}</option>
                                 ))}
                             </Select>

@@ -147,6 +147,12 @@ export default function Books({ books, categories, schools, filters, counts }) {
             <Card className="overflow-hidden">
                 <div className="flex flex-col gap-3 border-b border-slate-100 p-4 sm:flex-row">
                     <SearchInput value={search} onChange={setSearch} placeholder="Search title, author, ISBN, barcode…" className="sm:max-w-sm" />
+                    <Select value={filters.school_id ?? ''} onChange={(event) => apply({ school_id: event.target.value })} className="sm:max-w-xs">
+                        <option value="">All schools</option>
+                        {schools.map((school) => (
+                            <option key={school.id} value={school.id}>{school.name}</option>
+                        ))}
+                    </Select>
                     <Select value={filters.book_category_id ?? ''} onChange={(event) => apply({ book_category_id: event.target.value })} className="sm:max-w-xs">
                         <option value="">All categories</option>
                         {categories.map((category) => (

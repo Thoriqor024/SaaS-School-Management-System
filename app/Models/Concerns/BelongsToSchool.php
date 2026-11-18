@@ -21,11 +21,11 @@ trait BelongsToSchool
 
     /**
      * Restrict a query to the schools a user is allowed to see.
-     * Super admins see every school; other users see their own school only.
+     * Super admins and group-wide roles see every school; other users see their own school only.
      */
     public function scopeVisibleTo($query, ?User $user)
     {
-        if (! $user || $user->isSuperAdmin()) {
+        if (! $user || $user->hasGroupScope()) {
             return $query;
         }
 

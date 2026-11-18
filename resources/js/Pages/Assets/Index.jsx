@@ -62,7 +62,7 @@ export default function AssetsIndex({ assets, categories, schools, filters, cond
             render: (asset) => (
                 <div>
                     <p className="text-slate-700">{asset.location ?? '—'}</p>
-                    <p className="text-[11px] text-slate-500">{asset.branch?.name ?? 'No branch'}</p>
+                    <p className="text-[11px] text-slate-500">{asset.school?.name ?? '—'} · {asset.branch?.name ?? 'No branch'}</p>
                 </div>
             ),
         },
@@ -134,8 +134,14 @@ export default function AssetsIndex({ assets, categories, schools, filters, cond
 
             <Card className="overflow-hidden">
                 <div className="border-b border-slate-100 p-4">
-                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-6">
                         <SearchInput value={search} onChange={setSearch} placeholder="Search name, code, location…" className="lg:col-span-2" />
+                        <Select value={filters.school_id ?? ''} onChange={(event) => apply({ school_id: event.target.value })}>
+                            <option value="">All schools</option>
+                            {schools.map((school) => (
+                                <option key={school.id} value={school.id}>{school.name}</option>
+                            ))}
+                        </Select>
                         <Select value={filters.asset_category_id ?? ''} onChange={(event) => apply({ asset_category_id: event.target.value })}>
                             <option value="">All categories</option>
                             {categories.map((category) => (

@@ -3,12 +3,18 @@ import { ArrowLeft, Loader2, Save, ScanLine } from 'lucide-react';
 import { useMemo } from 'react';
 import AppLayout from '../../Layouts/AppLayout';
 import { Badge, Card, CardHeader, Field, Input, PageHeader, Select, Textarea } from '../../Components/ui';
+import { useAuthUser } from '../../lib/auth';
 
 export default function BookForm({ book, categories, schools, branches }) {
     const isEdit = Boolean(book);
+    const authUser = useAuthUser();
+
+    // Group-wide roles can pick any school; default to the account's own school so
+    // records are not filed under the wrong branch.
+    const defaultSchoolId = authUser?.school?.id ?? schools[0]?.id ?? '';
 
     const { data, setData, post, put, processing, errors } = useForm({
-        school_id: book?.school_id ?? schools[0]?.id ?? '',
+        school_id: book?.school_id ?? defaultSchoolId,
         branch_id: book?.branch_id ?? '',
         book_category_id: book?.book_category_id ?? '',
         title: book?.title ?? '',

@@ -89,7 +89,7 @@ class CafeteriaController extends Controller
 
     public function destroyMenu(Request $request, CafeteriaMenu $menu): RedirectResponse
     {
-        abort_unless($request->user()->isSuperAdmin() || $menu->school_id === $request->user()->school_id, 403);
+        abort_unless($request->user()->hasGroupScope() || $menu->school_id === $request->user()->school_id, 403);
 
         $menu->delete();
 
@@ -165,7 +165,7 @@ class CafeteriaController extends Controller
 
     public function destroyInventory(Request $request, CafeteriaInventoryItem $item): RedirectResponse
     {
-        abort_unless($request->user()->isSuperAdmin() || $item->school_id === $request->user()->school_id, 403);
+        abort_unless($request->user()->hasGroupScope() || $item->school_id === $request->user()->school_id, 403);
 
         $item->delete();
 
@@ -272,7 +272,7 @@ class CafeteriaController extends Controller
 
     public function destroyMealLog(Request $request, MealLog $log): RedirectResponse
     {
-        abort_unless($request->user()->isSuperAdmin() || $log->school_id === $request->user()->school_id, 403);
+        abort_unless($request->user()->hasGroupScope() || $log->school_id === $request->user()->school_id, 403);
 
         $log->delete();
 

@@ -100,7 +100,7 @@ class TransportPassengerController extends Controller
 
     public function destroy(Request $request, TransportPassenger $passenger): RedirectResponse
     {
-        abort_unless($request->user()->isSuperAdmin() || $passenger->route?->school_id === $request->user()->school_id, 403);
+        abort_unless($request->user()->hasGroupScope() || $passenger->route?->school_id === $request->user()->school_id, 403);
 
         $passenger->delete();
 
@@ -179,7 +179,7 @@ class TransportPassengerController extends Controller
 
     public function destroyLog(Request $request, PassengerLog $log): RedirectResponse
     {
-        abort_unless($request->user()->isSuperAdmin() || $log->school_id === $request->user()->school_id, 403);
+        abort_unless($request->user()->hasGroupScope() || $log->school_id === $request->user()->school_id, 403);
 
         $log->delete();
 

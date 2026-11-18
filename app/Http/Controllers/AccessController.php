@@ -21,7 +21,7 @@ class AccessController extends Controller
         $search = trim((string) $request->input('search'));
 
         $users = User::query()
-            ->when(! $user->isSuperAdmin(), fn ($q) => $q->where('school_id', $user->school_id))
+            ->when(! $user->hasGroupScope(), fn ($q) => $q->where('school_id', $user->school_id))
             ->when($search !== '', fn ($q) => $q->where(fn ($inner) => $inner
                 ->where('name', 'like', "%{$search}%")
                 ->orWhere('email', 'like', "%{$search}%")

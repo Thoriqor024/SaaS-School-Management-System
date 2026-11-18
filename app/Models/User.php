@@ -73,6 +73,25 @@ class User extends Authenticatable
         return $this->hasRole('super_admin');
     }
 
+    /**
+     * Roles that work across the whole group instead of a single school.
+     */
+    public const GROUP_SCOPE_ROLES = ['super_admin', 'asset_manager', 'librarian'];
+
+    /**
+     * Whether the account may read and write records in every school.
+     * Super admins always can; asset managers and librarians are group-wide so
+     * inventory and library records can be maintained for any branch.
+     */
+    public function hasGroupScope(): bool
+    {
+        if ($this->isSuperAdmin()) {
+            return true;
+        }
+
+        return $this->roles->contains(fn (Role $role) => in_array($role->slug, self::GROUP_SCOPE_ROLES, true));
+    }
+
     public function roleNames(): Collection
     {
         return $this->roles->pluck('name');

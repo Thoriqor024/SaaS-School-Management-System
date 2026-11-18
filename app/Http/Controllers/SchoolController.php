@@ -19,7 +19,7 @@ class SchoolController extends Controller
         $user = $request->user();
 
         $schools = School::query()
-            ->when(! $user->isSuperAdmin(), fn ($q) => $q->where('id', $user->school_id))
+            ->when(! $user->hasGroupScope(), fn ($q) => $q->where('id', $user->school_id))
             ->withCount(['branches', 'students', 'employees'])
             ->orderBy('name')
             ->get()

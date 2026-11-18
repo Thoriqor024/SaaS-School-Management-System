@@ -5,3 +5,7 @@ export function useCan() {
 
     return (permission) => permissions.includes(permission);
 }
+
+export function useAuthUser() {
+    return usePage().props.auth?.user ?? null;
+}

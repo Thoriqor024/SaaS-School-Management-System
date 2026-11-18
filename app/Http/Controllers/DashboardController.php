@@ -99,7 +99,7 @@ class DashboardController extends Controller
         ];
 
         $schools = School::query()
-            ->when(! $user->isSuperAdmin(), fn ($q) => $q->where('id', $user->school_id))
+            ->when(! $user->hasGroupScope(), fn ($q) => $q->where('id', $user->school_id))
             ->orderBy('name')
             ->get(['id', 'name', 'code', 'logo_color']);
 
@@ -108,7 +108,7 @@ class DashboardController extends Controller
         $schoolEmployeeCounts = Employee::query()->visibleTo($user)
             ->selectRaw('school_id, count(*) as total')->groupBy('school_id')->pluck('total', 'school_id');
         $schoolBranchCounts = \App\Models\Branch::query()
-            ->when(! $user->isSuperAdmin(), fn ($q) => $q->where('school_id', $user->school_id))
+            ->when(! $user->hasGroupScope(), fn ($q) => $q->where('school_id', $user->school_id))
             ->selectRaw('school_id, count(*) as total')->groupBy('school_id')->pluck('total', 'school_id');
 
         $schoolBreakdown = $schools->map(fn (School $school) => [

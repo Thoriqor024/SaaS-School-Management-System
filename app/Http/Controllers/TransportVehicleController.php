@@ -109,7 +109,7 @@ class TransportVehicleController extends Controller
 
     public function destroy(Request $request, TransportVehicle $vehicle): RedirectResponse
     {
-        abort_unless($request->user()->isSuperAdmin() || $vehicle->school_id === $request->user()->school_id, 403);
+        abort_unless($request->user()->hasGroupScope() || $vehicle->school_id === $request->user()->school_id, 403);
 
         $vehicle->delete();
 

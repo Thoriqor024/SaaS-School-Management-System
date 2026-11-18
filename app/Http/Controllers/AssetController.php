@@ -4,12 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\Asset;
 use App\Models\AssetCategory;
+use App\Models\Employee;
 use App\Models\Student;
 use App\Support\OptionLists;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -76,6 +78,7 @@ class AssetController extends Controller
     {
         $data = $this->validated($request);
         $this->ensureRecordScope($request, $data['school_id'], $data['branch_id'] ?? null);
+        $this->ensureAssignedEmployeeMatchesSchool($data);
         $asset = Asset::create($data);
 
         return redirect()->route('assets.index')->with('success', $asset->name.' was added to the inventory.');
@@ -97,6 +100,7 @@ class AssetController extends Controller
 
         $data = $this->validated($request, $asset);
         $this->ensureRecordScope($request, $data['school_id'], $data['branch_id'] ?? null);
+        $this->ensureAssignedEmployeeMatchesSchool($data);
         $asset->update($data);
 
         return redirect()->route('assets.index')->with('success', $asset->name.' was updated.');
@@ -185,7 +189,7 @@ class AssetController extends Controller
 
     protected function validated(Request $request, ?Asset $asset = null): array
     {
-        return $request->validate([
+        $data = $request->validate([
             'school_id' => ['required', 'uuid', 'exists:schools,id'],
             'branch_id' => ['nullable', 'uuid', 'exists:branches,id'],
             'asset_category_id' => ['nullable', 'uuid', 'exists:asset_categories,id'],
@@ -204,5 +208,23 @@ class AssetController extends Controller
             'last_checked_at' => ['nullable', 'date'],
             'notes' => ['nullable', 'string', 'max:1000'],
         ]);
+
+        return $data;
+    }
+
+    /**
+     * An asset may only be assigned to an employee of the school that owns it.
+     */
+    protected function ensureAssignedEmployeeMatchesSchool(array $data): void
+    {
+        if (empty($data['assigned_to_employee_id'])) {
+            return;
+        }
+
+        if (Employee::whereKey($data['assigned_to_employee_id'])->value('school_id') !== $data['school_id']) {
+            throw ValidationException::withMessages([
+                'assigned_to_employee_id' => 'This employee belongs to another school. Assign the asset to an employee of the selected school, or leave it unassigned.',
+            ]);
+        }
     }
 }

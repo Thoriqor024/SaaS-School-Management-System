@@ -27,10 +27,10 @@ class ReportData
     public static function build(User $user, ?string $schoolId): array
     {
         $schools = School::query()
-            ->when(! $user->isSuperAdmin(), fn ($q) => $q->where('id', $user->school_id))
+            ->when(! $user->hasGroupScope(), fn ($q) => $q->where('id', $user->school_id))
             ->orderBy('name')->get(['id', 'name', 'code']);
 
-        // Every metric below is confined to the user's school and the selected filter.
+        // Every metric below is confined to the user's scope and the selected filter.
         $scoped = fn ($query) => $query->visibleTo($user)->when($schoolId, fn ($q, $v) => $q->where('school_id', $v));
 
         $students = $scoped(Student::query());

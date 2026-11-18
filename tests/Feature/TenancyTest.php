@@ -126,4 +126,49 @@ class TenancyTest extends TestCase
         $dashboard = $this->get('/');
         $dashboard->assertOk();
     }
+
+    public function test_library_membership_cannot_use_a_student_from_another_school(): void
+    {
+        $librarian = User::where('email', 'library@siswahub.test')->firstOrFail();
+        $foreignStudent = Student::where('school_id', '!=', $librarian->school_id)
+            ->whereDoesntHave('libraryMembers')
+            ->firstOrFail();
+
+        $this->actingAs($librarian);
+
+        $response = $this->post('/library/members', [
+            'school_id' => $librarian->school_id,
+            'member_type' => 'student',
+            'student_id' => $foreignStudent->id,
+            'joined_at' => now()->toDateString(),
+            'max_loans' => 3,
+            'status' => 'active',
+        ]);
+
+        $response->assertSessionHasErrors('student_id');
+        $this->assertDatabaseMissing('library_members', ['student_id' => $foreignStudent->id]);
+    }
+
+    public function test_asset_cannot_be_assigned_to_an_employee_from_another_school(): void
+    {
+        $assetManager = User::where('email', 'assets@siswahub.test')->firstOrFail();
+        $foreignEmployee = Employee::where('school_id', '!=', $assetManager->school_id)->firstOrFail();
+
+        $this->actingAs($assetManager);
+
+        $response = $this->post('/assets', [
+            'school_id' => $assetManager->school_id,
+            'asset_code' => 'X-SCHOOL-1',
+            'name' => 'Cross School Assignment',
+            'type' => 'fixed',
+            'quantity' => 1,
+            'unit' => 'unit',
+            'condition' => 'good',
+            'status' => 'in_use',
+            'assigned_to_employee_id' => $foreignEmployee->id,
+        ]);
+
+        $response->assertSessionHasErrors('assigned_to_employee_id');
+        $this->assertDatabaseMissing('assets', ['asset_code' => 'X-SCHOOL-1']);
+    }
 }

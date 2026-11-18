@@ -14,7 +14,7 @@ class OptionLists
     public static function schools(?User $user): Collection
     {
         return School::query()
-            ->when($user && ! $user->isSuperAdmin(), fn ($q) => $q->where('id', $user->school_id))
+            ->when($user && ! $user->hasGroupScope(), fn ($q) => $q->where('id', $user->school_id))
             ->orderBy('name')
             ->get(['id', 'name', 'code']);
     }
@@ -22,7 +22,7 @@ class OptionLists
     public static function branches(?User $user, ?string $schoolId = null): Collection
     {
         return Branch::query()
-            ->when($user && ! $user->isSuperAdmin(), fn ($q) => $q->where('school_id', $user->school_id))
+            ->when($user && ! $user->hasGroupScope(), fn ($q) => $q->where('school_id', $user->school_id))
             ->when($schoolId, fn ($q) => $q->where('school_id', $schoolId))
             ->orderBy('name')
             ->get(['id', 'school_id', 'name', 'code']);
